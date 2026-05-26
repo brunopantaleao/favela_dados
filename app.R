@@ -326,7 +326,7 @@ server <- function(input, output, session) {
         weight      = 0.8,
         color       = "white",
         popup       = popups,
-        label       =  NM_FCU,  
+        label       = ~NM_FCU,  
         highlightOptions = highlightOptions(
           weight = 2, color = "#FFD700",
           fillOpacity = 0.95, bringToFront = TRUE
