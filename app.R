@@ -130,7 +130,7 @@ make_popup <- function(sf_obj) {
   fmt_pct <- function(x) ifelse(is.na(x), "—", paste0(round(x, 1), "%"))
   fmt_num <- function(x) ifelse(is.na(x), "—", round(x, 3))
   fmt_sm  <- function(x) ifelse(is.na(x), "—", paste0(round(x, 2), " SM"))
-  
+
   mapply(function(nm, ids, ida,
                   agua, esgo, lixo, banh,
                   renda, analf,
@@ -141,17 +141,24 @@ make_popup <- function(sf_obj) {
         <b style='font-size:1.05em;'>%s</b>
         <hr style='margin:4px 0;'>
         <table style='width:100%%;font-size:0.88em;border-collapse:collapse;'>
+
           <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Índices compostos</td></tr>
           <tr><td>IDS</td><td><b>%s</b></td></tr>
           <tr><td>IDA</td><td><b>%s</b></td></tr>
+
+          <tr><td colspan='2' style='padding:4px 0;'></td></tr>
           <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Saneamento</td></tr>
           <tr><td>Água encanada</td><td>%s</td></tr>
           <tr><td>Esgoto rede geral</td><td>%s</td></tr>
           <tr><td>Coleta de lixo</td><td>%s</td></tr>
           <tr><td>Banheiros/morador</td><td>%s</td></tr>
+
+          <tr><td colspan='2' style='padding:4px 0;'></td></tr>
           <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Renda e Educação</td></tr>
           <tr><td>Renda média</td><td>%s</td></tr>
           <tr><td>Analfabetismo 15+</td><td>%s</td></tr>
+
+          <tr><td colspan='2' style='padding:4px 0;'></td></tr>
           <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Acessibilidade Urbana</td></tr>
           <tr><td>Via pavimentada</td><td>%s</td></tr>
           <tr><td>Bueiro</td><td>%s</td></tr>
@@ -161,9 +168,12 @@ make_popup <- function(sf_obj) {
           <tr><td>Calçada</td><td>%s</td></tr>
           <tr><td>Obstáculo calçada</td><td>%s</td></tr>
           <tr><td>Rampa cadeirante</td><td>%s</td></tr>
-          <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Outros</td></tr>
-          <tr><td>Risco natural</td><td>%s</td></tr>
+
+          <tr><td colspan='2' style='padding:4px 0;'></td></tr>
+          <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Informações gerais</td></tr>
           <tr><td>População</td><td>%s</td></tr>
+          <tr><td>Risco natural</td><td>%s</td></tr>
+
         </table>
       </div>",
       nm,
@@ -172,8 +182,8 @@ make_popup <- function(sf_obj) {
       fmt_sm(renda), fmt_pct(analf),
       fmt_pct(viapav), fmt_pct(bueiro), fmt_pct(ilum), fmt_pct(onton),
       fmt_pct(viabic), fmt_pct(calcad), fmt_pct(obstac), fmt_pct(rampa),
-      ifelse(is.na(risco), "—", ifelse(risco == 1, "Sim", "Não")),
-      formatC(pop, format = "d", big.mark = ".")
+      formatC(pop, format = "d", big.mark = "."),
+      ifelse(is.na(risco), "—", ifelse(risco == 1, "Sim", "Não"))
     )
   },
   nm     = sf_obj$NM_FCU,
