@@ -132,7 +132,7 @@ make_popup <- function(sf_obj) {
   fmt_sm  <- function(x) ifelse(is.na(x), "—", paste0(round(x, 2), " SM"))
 
   mapply(function(nm, ids, ida,
-                  agua, esgo, lixo, banh,
+                  agua, esgo, lixo, 
                   renda, analf,
                   viapav, bueiro, ilum, onton, viabic, calcad, obstac, rampa,
                   risco, pop) {
@@ -151,7 +151,6 @@ make_popup <- function(sf_obj) {
           <tr><td>Água encanada</td><td>%s</td></tr>
           <tr><td>Esgoto rede geral</td><td>%s</td></tr>
           <tr><td>Coleta de lixo</td><td>%s</td></tr>
-          <tr><td>Banheiros/morador</td><td>%s</td></tr>
 
           <tr><td colspan='2' style='padding:4px 0;'></td></tr>
           <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Renda e Educação</td></tr>
@@ -178,7 +177,7 @@ make_popup <- function(sf_obj) {
       </div>",
       nm,
       fmt_num(ids), fmt_num(ida),
-      fmt_pct(agua), fmt_pct(esgo), fmt_pct(lixo), fmt_num(banh),
+      fmt_pct(agua), fmt_pct(esgo), fmt_pct(lixo),
       fmt_sm(renda), fmt_pct(analf),
       fmt_pct(viapav), fmt_pct(bueiro), fmt_pct(ilum), fmt_pct(onton),
       fmt_pct(viabic), fmt_pct(calcad), fmt_pct(obstac), fmt_pct(rampa),
@@ -192,7 +191,6 @@ make_popup <- function(sf_obj) {
   agua   = sf_obj$PERC_AGUA,
   esgo   = sf_obj$PERC_ESGO,
   lixo   = sf_obj$PERC_LIXO,
-  banh   = sf_obj$I_BANH,
   renda  = sf_obj$RENDA_SM,
   analf  = sf_obj$PERC_ANALF,
   viapav = sf_obj$P_VIAPAV,
@@ -407,7 +405,7 @@ server <- function(input, output, session) {
     dados_filtrados() %>%
       select(cd_fcu, nm_fcu, nm_mun, nm_uf, total_pessoas, total_dp_ocupados,
              perc_agua_adequada, perc_esgoto_adequado, perc_lixo_coleta,
-             renda_sm_pond, perc_analfabeto_populacao, num_medio_banheiros_por_morador,
+             renda_sm_pond, perc_analfabeto_populacao, 
              perc_via_pavimentada, perc_bueiro, perc_iluminacao_publica,
              perc_ponto_onibus, perc_via_bicicleta, perc_calcada,
              perc_obstaculo_calcada, perc_rampa_cadeirante, IDS, IDA,
@@ -424,7 +422,6 @@ server <- function(input, output, session) {
         "Coleta de lixo (%)"    = perc_lixo_coleta,
         "Renda média (SM)"      = renda_sm_pond,
         "Analfabetismo 15+ (%)" = perc_analfabeto_populacao,
-        "Banheiros/morador"     = num_medio_banheiros_por_morador,
         "Via pavimentada (%)"   = perc_via_pavimentada,
         "Bueiro (%)"            = perc_bueiro,
         "Iluminação pública (%)"= perc_iluminacao_publica,
@@ -441,7 +438,7 @@ server <- function(input, output, session) {
   output$tabela_dados <- renderDT({
     datatable(tabela_export(), rownames = FALSE, filter = "top",
       options = list(pageLength = 25, scrollX = TRUE, dom = "frtip")) %>%
-      formatRound(columns = c("IDS", "IDA", "Renda média (SM)", "Banheiros/morador"), digits = 3) %>%
+      formatRound(columns = c("IDS", "IDA", "Renda média (SM)"), digits = 3) %>%
       formatRound(columns = c("Água encanada (%)", "Esgoto rede geral (%)", "Coleta de lixo (%)",
                               "Analfabetismo 15+ (%)", "Via pavimentada (%)", "Bueiro (%)",
                               "Iluminação pública (%)", "Ponto de ônibus (%)", "Ciclovia (%)",
