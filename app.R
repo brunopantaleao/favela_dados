@@ -215,7 +215,7 @@ ui <- page_navbar(
   title    = "Favelas BR — Plataforma de Análise",
   theme    = bs_theme(bootswatch = "flatly", base_font = font_google("Inter")),
   fillable = TRUE,
-  
+
   sidebar = sidebar(
     width = 260,
     title = "Filtros",
@@ -226,32 +226,32 @@ ui <- page_navbar(
     hr(),
     p(tags$small(tags$i("Dados: Censo IBGE 2022 · IBGE FCU 2022 · SGB")))
   ),
-  
+
   nav_panel(
     title = tagList(icon("map"), " Mapa"),
     card(full_screen = TRUE,
-         card_header(textOutput("mapa_titulo")),
-         uiOutput("mapa_ui")
+      card_header(textOutput("mapa_titulo")),
+      uiOutput("mapa_ui")
     )
   ),
-  
+
   nav_panel(
     title = tagList(icon("chart-bar"), " Comparações"),
     layout_columns(col_widths = c(6, 6),
-                   card(card_header("Média por Estado (UF)"),        card_body(plotOutput("chart_uf",   height = "420px"))),
-                   card(card_header("Média por Município (top 20)"), card_body(plotOutput("chart_mun",  height = "420px")))
+      card(card_header("Média por Estado (UF)"),        card_body(plotOutput("chart_uf",   height = "420px"))),
+      card(card_header("Média por Município (top 20)"), card_body(plotOutput("chart_mun",  height = "420px")))
     ),
     layout_columns(col_widths = c(12),
-                   card(card_header("Distribuição do indicador"), card_body(plotOutput("chart_hist", height = "280px")))
+      card(card_header("Distribuição do indicador"), card_body(plotOutput("chart_hist", height = "280px")))
     )
   ),
-  
+
   nav_panel(
     title = tagList(icon("table"), " Dados"),
     card(
       card_header(layout_columns(col_widths = c(8, 4),
-                                 textOutput("dados_titulo"),
-                                 downloadButton("download_csv", "Baixar CSV", class = "btn-sm btn-success")
+        textOutput("dados_titulo"),
+        downloadButton("download_csv", "Baixar CSV", class = "btn-sm btn-success")
       )),
       card_body(DTOutput("tabela_dados"))
     )
@@ -262,23 +262,22 @@ ui <- page_navbar(
 # SERVER
 # =========================================================================
 server <- function(input, output, session) {
-  
-  # Update municipality choices when UF changes
+
   observeEvent(input$sel_uf, {
     muns_filtrados <- if (length(input$sel_uf) > 0 && !all(input$sel_uf == "")) {
       fav_df %>% filter(nm_uf %in% input$sel_uf) %>% pull(nm_mun) %>% unique() %>% sort()
     } else { municipios }
     updateSelectInput(session, "sel_mun",
-                      choices  = c("Todos" = "", muns_filtrados),
-                      selected = input$sel_mun[input$sel_mun %in% muns_filtrados]
+      choices  = c("Todos" = "", muns_filtrados),
+      selected = input$sel_mun[input$sel_mun %in% muns_filtrados]
     )
   })
-  
+
   dados_filtrados <- reactive({ filter_data(fav_df, input$sel_uf, input$sel_mun) })
   sf_filtrado     <- reactive({ filter_sf(fav_sf,  input$sel_uf, input$sel_mun) })
   ind_col         <- reactive({ input$sel_ind })
   ind_nome        <- reactive({ ind_label[[input$sel_ind]] })
-  
+
   # -----------------------------------------------------------------------
   # Tab 1 — Mapa
   # -----------------------------------------------------------------------
@@ -288,7 +287,7 @@ server <- function(input, output, session) {
     else
       paste0("Mapa — ", ind_nome(), " | ", nrow(dados_filtrados()), " favelas")
   })
-  
+
   output$mapa_ui <- renderUI({
     if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
       div(
@@ -301,43 +300,43 @@ server <- function(input, output, session) {
       leafletOutput("mapa", width = "100%", height = "680px")
     }
   })
-  
+
   output$mapa <- renderLeaflet({
     req(length(input$sel_uf) > 0, !all(input$sel_uf == ""))
+
     sf_obj <- sf_filtrado()
     col    <- ind_col()
+    nome   <- ind_nome()   # extract reactive before leaflet call
     vals   <- sf_obj[[col]]
     pal    <- colorNumeric(viridis(100), domain = vals, na.color = "#CCCCCC")
-    popups <- make_popup(sf_obj)
-    
-    # Determine centre: use first selected UF's capital
-    uf_sel  <- input$sel_uf[1]
-    cap     <- capitais %>% filter(nm_uf == uf_sel)
+    popups <- unname(make_popup(sf_obj))
+
+    uf_sel   <- input$sel_uf[1]
+    cap      <- capitais %>% filter(nm_uf == uf_sel)
     map_lat  <- if (nrow(cap) > 0) cap$lat[1]  else -15
     map_lng  <- if (nrow(cap) > 0) cap$lng[1]  else -50
     map_zoom <- if (nrow(cap) > 0) cap$zoom[1] else  5
-    
+
     leaflet(sf_obj) %>%
       setView(lng = map_lng, lat = map_lat, zoom = map_zoom) %>%
       addProviderTiles("CartoDB.Positron") %>%
       addPolygons(
-        fillColor    = ~pal(vals),
-        fillOpacity  = 0.8,
-        weight       = 0.8,
-        color        = "white",
-        popup        = popups,
-        label        = ~paste0(NM_FCU, " — ", ind_nome(), ": ",
-                               ifelse(is.na(vals), "—", round(vals, 3))),
+        fillColor   = ~pal(vals),
+        fillOpacity = 0.8,
+        weight      = 0.8,
+        color       = "white",
+        popup       = popups,
+        label       = ~paste0(NM_FCU, " — ", nome, ": ",
+                              ifelse(is.na(vals), "—", round(vals, 3))),
         highlightOptions = highlightOptions(
           weight = 2, color = "#FFD700",
           fillOpacity = 0.95, bringToFront = TRUE
         )
       ) %>%
-      addLegend(pal = pal, values = vals, title = ind_nome(),
+      addLegend(pal = pal, values = vals, title = nome,
                 opacity = 0.9, position = "bottomright")
   })
-  
-  # Auto-zoom when UF selection changes (map already rendered)
+
   observeEvent(input$sel_uf, {
     req(length(input$sel_uf) > 0, !all(input$sel_uf == ""))
     uf_sel <- input$sel_uf[1]
@@ -347,7 +346,7 @@ server <- function(input, output, session) {
         setView(lng = cap$lng[1], lat = cap$lat[1], zoom = cap$zoom[1])
     }
   }, ignoreInit = TRUE)
-  
+
   # -----------------------------------------------------------------------
   # Tab 2 — Comparações
   # -----------------------------------------------------------------------
@@ -355,9 +354,9 @@ server <- function(input, output, session) {
     theme(panel.grid.major.y = element_blank(),
           axis.text.x = element_text(size = 9),
           plot.title  = element_blank())
-  
+
   output$chart_uf <- renderPlot({
-    col <- ind_col(); df <- dados_filtrados()
+    col <- ind_col(); nome <- ind_nome(); df <- dados_filtrados()
     if (!col %in% names(df)) return(NULL)
     df %>% group_by(UF = nm_uf) %>%
       summarise(media = mean(.data[[col]], na.rm = TRUE), n = n(), .groups = "drop") %>%
@@ -367,11 +366,11 @@ server <- function(input, output, session) {
       geom_text(aes(label = round(media, 2)), hjust = -0.15, size = 3.2) +
       scale_fill_viridis_c(option = "D") +
       scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
-      labs(x = ind_nome(), y = NULL) + chart_theme
+      labs(x = nome, y = NULL) + chart_theme
   })
-  
+
   output$chart_mun <- renderPlot({
-    col <- ind_col(); df <- dados_filtrados()
+    col <- ind_col(); nome <- ind_nome(); df <- dados_filtrados()
     if (!col %in% names(df)) return(NULL)
     df %>% group_by(Município = nm_mun) %>%
       summarise(media = mean(.data[[col]], na.rm = TRUE), n = n(), .groups = "drop") %>%
@@ -382,11 +381,11 @@ server <- function(input, output, session) {
       geom_text(aes(label = round(media, 2)), hjust = -0.15, size = 3) +
       scale_fill_viridis_c(option = "D") +
       scale_x_continuous(expand = expansion(mult = c(0, 0.18))) +
-      labs(x = ind_nome(), y = NULL) + chart_theme
+      labs(x = nome, y = NULL) + chart_theme
   })
-  
+
   output$chart_hist <- renderPlot({
-    col <- ind_col(); df <- dados_filtrados()
+    col <- ind_col(); nome <- ind_nome(); df <- dados_filtrados()
     if (!col %in% names(df)) return(NULL)
     med <- median(df[[col]], na.rm = TRUE)
     ggplot(df, aes(x = .data[[col]])) +
@@ -395,16 +394,16 @@ server <- function(input, output, session) {
       annotate("text", x = med, y = Inf, vjust = 2, hjust = -0.1,
                label = paste0("Mediana: ", round(med, 2)),
                colour = "tomato", size = 3.5) +
-      labs(x = ind_nome(), y = "Nº de favelas") + theme_minimal(base_size = 12)
+      labs(x = nome, y = "Nº de favelas") + theme_minimal(base_size = 12)
   })
-  
+
   # -----------------------------------------------------------------------
   # Tab 3 — Dados
   # -----------------------------------------------------------------------
   output$dados_titulo <- renderText({
     paste0(nrow(dados_filtrados()), " favelas selecionadas")
   })
-  
+
   tabela_export <- reactive({
     dados_filtrados() %>%
       select(cd_fcu, nm_fcu, nm_mun, nm_uf, total_pessoas, total_dp_ocupados,
@@ -439,10 +438,10 @@ server <- function(input, output, session) {
         "IDA"                   = IDA
       )
   })
-  
+
   output$tabela_dados <- renderDT({
     datatable(tabela_export(), rownames = FALSE, filter = "top",
-              options = list(pageLength = 25, scrollX = TRUE, dom = "frtip")) %>%
+      options = list(pageLength = 25, scrollX = TRUE, dom = "frtip")) %>%
       formatRound(columns = c("IDS", "IDA", "Renda média (SM)", "Banheiros/morador"), digits = 3) %>%
       formatRound(columns = c("Água encanada (%)", "Esgoto rede geral (%)", "Coleta de lixo (%)",
                               "Analfabetismo 15+ (%)", "Via pavimentada (%)", "Bueiro (%)",
@@ -452,7 +451,7 @@ server <- function(input, output, session) {
       formatCurrency(columns = c("População", "Domicílios ocupados"),
                      currency = "", interval = 3, mark = ".", digits = 0)
   })
-  
+
   output$download_csv <- downloadHandler(
     filename = function() {
       uf_str  <- if (length(input$sel_uf)  > 0 && !all(input$sel_uf  == ""))
