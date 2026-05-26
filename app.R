@@ -212,7 +212,7 @@ make_popup <- function(sf_obj) {
 # UI
 # =========================================================================
 ui <- page_navbar(
-  title    = "Favela Dados — Conheça mais os dados sobre as favelas brasileiras",
+  title    = "Favela Dados — Clique na favela e saiba mais",
   theme    = bs_theme(bootswatch = "flatly", base_font = font_google("Inter")),
   fillable = TRUE,
 
