@@ -1041,14 +1041,6 @@
     "Version": "3.5.2"
   }
 },
-"readr": {
-  "Source": "CRAN",
-  "Repository": "https://cran.rstudio.com",
-  "description": {
-    "Package": "readr",
-    "Version": "2.1.5"
-  }
-},
 "dplyr": {
   "Source": "CRAN",
   "Repository": "https://cran.rstudio.com",
