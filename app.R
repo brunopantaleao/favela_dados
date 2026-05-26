@@ -212,7 +212,7 @@ make_popup <- function(sf_obj) {
 # UI
 # =========================================================================
 ui <- page_navbar(
-  title    = "Favelas BR — Plataforma de Análise",
+  title    = "Favela Dados — Conheça mais os dados sobre as favelas brasileiras",
   theme    = bs_theme(bootswatch = "flatly", base_font = font_google("Inter")),
   fillable = TRUE,
 
@@ -326,8 +326,7 @@ server <- function(input, output, session) {
         weight      = 0.8,
         color       = "white",
         popup       = popups,
-        label       = ~paste0(NM_FCU, " — ", nome, ": ",
-                              ifelse(is.na(vals), "—", round(vals, 3))),
+        label       =  NM_FCU,  
         highlightOptions = highlightOptions(
           weight = 2, color = "#FFD700",
           fillOpacity = 0.95, bringToFront = TRUE
