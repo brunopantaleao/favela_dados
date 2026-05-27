@@ -116,10 +116,10 @@ indicadores <- list(
   list(col = "P_CALCAD",  label = "Calçada (%)",                              dir = +1, group = "Acessibilidade Urbana"),
   list(col = "P_OBSTAC",  label = "Obstáculo na calçada (%)",                 dir = -1, group = "Acessibilidade Urbana"),
   list(col = "P_RAMPA",   label = "Rampa para cadeirante (%)",                dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "CMAET60",   label = "Empregos acessíveis (60 min, TP)",         dir = +1, group = "Acesso a Oportunidades"),
-  list(col = "CMAST60",   label = "Escolas acessíveis (60 min, TP)",          dir = +1, group = "Acesso a Oportunidades"),
-  list(col = "CMATT60",   label = "Hospitais acessíveis (60 min, TP)",        dir = +1, group = "Acesso a Oportunidades"),
-  list(col = "CMACT60",   label = "CRAS acessíveis (60 min, TP)",             dir = +1, group = "Acesso a Oportunidades"),
+  list(col = "CMAET60",   label = "Empregos acessíveis (60 min, transporte público)",         dir = +1, group = "Acesso a Oportunidades"),
+  list(col = "CMAST60",   label = "Escolas acessíveis (60 min, transporte público)",          dir = +1, group = "Acesso a Oportunidades"),
+  list(col = "CMATT60",   label = "Hospitais acessíveis (60 min, transporte público)",        dir = +1, group = "Acesso a Oportunidades"),
+  list(col = "CMACT60",   label = "CRAS acessíveis (60 min, transporte público)",             dir = +1, group = "Acesso a Oportunidades"),
   list(col = "tem_risco", label = "Exposição a risco natural (flag)",         dir = -1, group = "Riscos Naturais")
 )
 
@@ -339,9 +339,9 @@ ui <- page_navbar(
         tags$p("Favelas em municípios fora desta lista terão NA nas variáveis AOP."),
         tags$ul(
           tags$li(tags$b("CMAET60:"), " número cumulativo de empregos formais acessíveis em até 60 minutos por transporte público, no pico da manhã."),
-          tags$li(tags$b("CMAST60:"), " número de escolas públicas acessíveis em até 60 minutos por TP."),
-          tags$li(tags$b("CMATT60:"), " número de hospitais e UPAs acessíveis em até 60 minutos por TP."),
-          tags$li(tags$b("CMACT60:"), " número de CRAS acessíveis em até 60 minutos por TP.")
+          tags$li(tags$b("CMAST60:"), " número de escolas públicas acessíveis em até 60 minutos por transporte público."),
+          tags$li(tags$b("CMATT60:"), " número de hospitais e UPAs acessíveis em até 60 minutos por transporte público."),
+          tags$li(tags$b("CMACT60:"), " número de CRAS acessíveis em até 60 minutos por transporte público.")
         ),
 
         tags$h5("Nota metodológica"),
