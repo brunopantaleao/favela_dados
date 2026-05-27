@@ -82,7 +82,7 @@
         "Imports": "cli, glue (>= 1.6.1), lifecycle (>= 1.0.3), magrittr, rlang (>= 1.0.0), stringi (>= 1.5.3), vctrs (>= 0.4.0)",
         "Repository": "CRAN"
       }
-    }
+    },
     "DT": {
       "Source": "CRAN",
       "Repository": "https://cran.rstudio.com",
