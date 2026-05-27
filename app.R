@@ -249,6 +249,7 @@ ui <- page_navbar(
   ),
 
   # -----------------------------------------------------------------------
+  # Aba 1: Mapa
   nav_panel(
     title = tagList(icon("map"), " Mapa"),
     card(full_screen = TRUE,
@@ -258,7 +259,7 @@ ui <- page_navbar(
   ),
 
   # -----------------------------------------------------------------------
-  # Aba 2: Comparações (Radar removido)
+  # Aba 2: Comparações (Radar removido, histograma restaurado)
   nav_panel(
     title = tagList(icon("chart-bar"), " Comparações"),
     layout_columns(col_widths = c(12),
@@ -266,9 +267,17 @@ ui <- page_navbar(
                      card_header("Top 20 favelas — indicador selecionado"),
                      card_body(plotOutput("chart_top20", height = "480px"))
                    )
-        ),
+    ),
+    layout_columns(col_widths = c(12),
+                   card(
+                     card_header("Distribuição do indicador"),
+                     card_body(plotOutput("chart_hist", height = "260px"))
+                   )
+    )
+  ),
   
   # -----------------------------------------------------------------------
+  # Aba 3: Dados
   nav_panel(
     title = tagList(icon("table"), " Dados"),
     card(
@@ -281,6 +290,7 @@ ui <- page_navbar(
   ),
 
   # -----------------------------------------------------------------------
+  # Aba 4: Metadados
   nav_panel(
     title = tagList(icon("info-circle"), " Metadados"),
     card(
