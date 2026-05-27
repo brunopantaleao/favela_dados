@@ -477,7 +477,7 @@ server <- function(input, output, session) {
     if (!col %in% names(df)) return(NULL)
     df %>%
       filter(!is.na(.data[[col]])) %>%
-      slice_max(order_by = .data[[col]], n = 20) %>%
+      slice_max(order_by = .data[[col]], n = 10) %>%
       mutate(label = paste0(nm_fcu, " (", nm_mun, ")"),
              label = fct_reorder(label, .data[[col]])) %>%
       ggplot(aes(x = .data[[col]], y = label, fill = .data[[col]])) +
@@ -504,66 +504,7 @@ server <- function(input, output, session) {
       labs(x = nome, y = "Nº de favelas") + theme_minimal(base_size = 12)
   })
 
-  # Radar chart for selected favelas
-  output$chart_radar <- renderPlot({
-    req(length(input$sel_favelas_radar) > 0)
-
-    df <- fav_df %>%
-      filter(cd_fcu %in% input$sel_favelas_radar) %>%
-      select(cd_fcu, nm_fcu, nm_mun, all_of(names(radar_vars))) %>%
-      mutate(favela = paste0(nm_fcu, "\n(", nm_mun, ")"))
-
-    # Normalise each variable 0-1 across full dataset for fair radar
-    for (v in names(radar_vars)) {
-      if (v %in% names(fav_df)) {
-        mn <- min(fav_df[[v]], na.rm = TRUE)
-        mx <- max(fav_df[[v]], na.rm = TRUE)
-        df[[v]] <- if (mx > mn) (df[[v]] - mn) / (mx - mn) else 0
-      }
-    }
-
-    df_long <- df %>%
-      select(favela, all_of(names(radar_vars))) %>%
-      pivot_longer(cols = -favela, names_to = "variavel", values_to = "valor") %>%
-      mutate(variavel = radar_vars[variavel])
-
-    # Close the radar polygon
-    df_long <- bind_rows(
-      df_long,
-      df_long %>% group_by(favela) %>% slice(1) %>% ungroup()
-    )
-
-    n_vars <- length(radar_vars)
-    angles <- seq(0, 2 * pi, length.out = n_vars + 1)[-(n_vars + 1)]
-    var_labels <- data.frame(
-      variavel = unname(radar_vars),
-      angle    = angles,
-      x        = 1.2 * cos(angles),
-      y        = 1.2 * sin(angles)
-    )
-
-    df_polar <- df_long %>%
-      group_by(favela) %>%
-      mutate(idx = row_number() %% n_vars,
-             angle = angles[ifelse(idx == 0, n_vars, idx)],
-             x = valor * cos(angle),
-             y = valor * sin(angle)) %>%
-      ungroup()
-
-    ggplot(df_polar, aes(x = x, y = y, colour = favela, fill = favela, group = favela)) +
-      geom_polygon(alpha = 0.15, linewidth = 0.8) +
-      geom_point(size = 2) +
-      geom_text(data = var_labels, aes(x = x, y = y, label = variavel),
-                inherit.aes = FALSE, size = 3, colour = "grey30") +
-      coord_fixed() +
-      scale_colour_viridis_d(option = "D", end = 0.9) +
-      scale_fill_viridis_d(option = "D", end = 0.9) +
-      labs(colour = NULL, fill = NULL,
-           caption = "Valores normalizados 0–1 em relação ao total de favelas") +
-      theme_void(base_size = 12) +
-      theme(legend.position = "bottom",
-            plot.caption = element_text(size = 8, colour = "grey50"))
-  })
+ 
 
   # -----------------------------------------------------------------------
   # Tab 3 — Dados
