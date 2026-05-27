@@ -259,41 +259,6 @@ ui <- page_navbar(
 
   # -----------------------------------------------------------------------
   nav_panel(
-    title = tagList(icon("chart-bar"), " Comparações"),
-    layout_columns(col_widths = c(12),
-      card(
-        card_header("Top 20 favelas — indicador selecionado"),
-        card_body(plotOutput("chart_top20", height = "480px"))
-      )
-    ),
-    layout_columns(col_widths = c(12),
-      card(
-        card_header("Distribuição do indicador"),
-        card_body(plotOutput("chart_hist", height = "260px"))
-      )
-    ),
-    layout_columns(col_widths = c(12),
-      card(
-        card_header("Comparação em radar — selecione até 5 favelas"),
-        card_body(
-          fluidRow(
-            column(12,
-              selectizeInput("sel_favelas_radar",
-                label    = NULL,
-                choices  = NULL,
-                multiple = TRUE,
-                options  = list(maxItems = 5, placeholder = "Digite o nome da favela...")
-              )
-            )
-          ),
-          plotOutput("chart_radar", height = "420px")
-        )
-      )
-    )
-  ),
-
-  # -----------------------------------------------------------------------
-  nav_panel(
     title = tagList(icon("table"), " Dados"),
     card(
       card_header(layout_columns(col_widths = c(8, 4),
