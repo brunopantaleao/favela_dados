@@ -463,7 +463,7 @@ server <- function(input, output, session) {
     if (!col %in% names(df)) return(NULL)
     df %>%
       filter(!is.na(.data[[col]])) %>%
-      slice_max(order_by = .data[[col]], n = 10) %>%
+      slice_max(order_by = .data[[col]], n = 20) %>%
       mutate(label = paste0(nm_fcu, " (", nm_mun, ")"),
              label = fct_reorder(label, .data[[col]])) %>%
       ggplot(aes(x = .data[[col]], y = label, fill = .data[[col]])) +
