@@ -313,7 +313,7 @@ ui <- page_navbar(
         tags$hr(),
 
         tags$h5("Polígonos de Favelas (FCU)"),
-        tags$p("Fonte: IBGE — Folha de Coleta Urbana (FCU) 2022. Cobre 12.348 aglomerados subnormais em todo o território nacional."),
+        tags$p("Fonte: IBGE, Censo 2022 —  Inclui dados sobre 12.348 Favelas e Comunidades Urbanas (FCUs, no censo 2010 eram conhecidos como aglomerados subnormais) em todo o território nacional."),
 
         tags$h5("Censo IBGE 2022 — Setores Censitários"),
         tags$p("Dados agregados por setor censitário, depois vinculados aos polígonos FCU via tabela de correspondência IBGE. Variáveis coletadas:"),
