@@ -258,6 +258,17 @@ ui <- page_navbar(
   ),
 
   # -----------------------------------------------------------------------
+  # Aba 2: Comparações (Radar removido)
+  nav_panel(
+    title = tagList(icon("chart-bar"), " Comparações"),
+    layout_columns(col_widths = c(12),
+                   card(
+                     card_header("Top 20 favelas — indicador selecionado"),
+                     card_body(plotOutput("chart_top20", height = "480px"))
+                   )
+        ),
+  
+  # -----------------------------------------------------------------------
   nav_panel(
     title = tagList(icon("table"), " Dados"),
     card(
