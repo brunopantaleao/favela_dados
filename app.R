@@ -242,9 +242,9 @@ ind_label   <- setNames(sapply(indicadores, `[[`, "label"), sapply(indicadores, 
 ufs        <- sort(unique(na.omit(fav_df$nm_uf)))
 municipios <- sort(unique(na.omit(fav_df$nm_mun)))
 
-# Favela search choices: "Nome — Cidade — UF"  keyed by cd_fcu
+# Favela search choices: sorted by population desc
 fav_search_choices <- fav_df %>%
-  arrange(nm_fcu, nm_mun) %>%
+  arrange(desc(total_pessoas), nm_fcu) %>%
   mutate(label = paste0(nm_fcu, " — ", nm_mun, " — ", nm_uf)) %>%
   { setNames(.$cd_fcu, .$label) }
 
@@ -489,10 +489,10 @@ ui <- page_navbar(
 # =========================================================================
 server <- function(input, output, session) {
 
-  # Populate favela search with server-side selectize
+ # Populate favela search with server-side selectize
   updateSelectizeInput(session, "sel_favela_search",
-    choices  = fav_search_choices,
-    selected = NULL,
+    choices  = c("" = "", fav_search_choices),
+    selected = "",
     server   = TRUE
   )
 
