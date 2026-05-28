@@ -713,24 +713,26 @@ server <- function(input, output, session) {
       plot.new(); title(paste("Coluna não encontrada:", df_col)); return(NULL)
     }
 
-    worst <- isTRUE(input$show_worst)
+    worst   <- isTRUE(input$show_worst)
+    opt_pal <- if (worst) "B" else "D"
+    dir_pal <- if (worst) -1L else 1L
+    cap_lbl <- if (worst) "20 favelas com menor valor na seleção atual" else "20 favelas com maior valor na seleção atual"
 
-    df_plot <- df %>%
-      filter(!is.na(.data[[df_col]])) %>%
-      { if (worst) slice_min(., order_by = .data[[df_col]], n = 20)
-        else        slice_max(., order_by = .data[[df_col]], n = 20) } %>%
-      mutate(label = paste0(nm_fcu, " (", nm_mun, ")"),
-             label = fct_reorder(label, .data[[df_col]]))
+    df_filt <- df[!is.na(df[[df_col]]), ]
+    df_plot <- if (worst) {
+      df_filt[order(df_filt[[df_col]]), ][seq_len(min(20, nrow(df_filt))), ]
+    } else {
+      df_filt[order(-df_filt[[df_col]]), ][seq_len(min(20, nrow(df_filt))), ]
+    }
+    df_plot$label <- paste0(df_plot$nm_fcu, " (", df_plot$nm_mun, ")")
+    df_plot$label <- fct_reorder(df_plot$label, df_plot[[df_col]])
 
     ggplot(df_plot, aes(x = .data[[df_col]], y = label, fill = .data[[df_col]])) +
       geom_col(show.legend = FALSE) +
       geom_text(aes(label = round(.data[[df_col]], 2)), hjust = -0.15, size = 3) +
-      scale_fill_viridis_c(option = if (worst) "B" else "D",
-                           direction = if (worst) -1 else 1) +
+      scale_fill_viridis_c(option = opt_pal, direction = dir_pal) +
       scale_x_continuous(expand = expansion(mult = c(0, 0.18))) +
-      labs(x = nome, y = NULL,
-           caption = if (worst) "20 favelas com menor valor na seleção atual"
-                     else       "20 favelas com maior valor na seleção atual") +
+      labs(x = nome, y = NULL, caption = cap_lbl) +
       chart_theme
   })
 
