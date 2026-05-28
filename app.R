@@ -489,12 +489,6 @@ ui <- page_navbar(
 # =========================================================================
 server <- function(input, output, session) {
 
- # Populate favela search with server-side selectize
-  updateSelectizeInput(session, "sel_favela_search",
-    choices  = c("" = "", fav_search_choices),
-    selected = "",
-    server   = TRUE
-  )
 
   # Update municipalities when UF changes
   observeEvent(input$sel_uf, {
