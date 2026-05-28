@@ -501,9 +501,9 @@ ui <- page_navbar(
       tags$p("Municípios cobertos:"),
       tags$p(tags$em("Belém, Belo Horizonte, Brasília, Campinas, Campo Grande, Curitiba, Duque de Caxias, Fortaleza, Goiânia, Guarulhos, Maceió, Manaus, Natal, Porto Alegre, Recife, Rio de Janeiro, Salvador, São Gonçalo, São Luís, São Paulo.")),
       tags$ul(
-        tags$li(tags$b("CMAET60:"), " empregos formais acessíveis em ≤ 60 min de transporte público (pico manhã)."),
+        tags$li(tags$b("CMATT60:"), " empregos formais acessíveis em ≤ 60 min de transporte público (pico manhã)."),
         tags$li(tags$b("CMAST60:"), " escolas públicas acessíveis em ≤ 60 min por TP."),
-        tags$li(tags$b("CMATT60:"), " hospitais/UPAs acessíveis em ≤ 60 min por TP."),
+        tags$li(tags$b("CMAET60:"), " hospitais/UPAs acessíveis em ≤ 60 min por TP."),
         tags$li(tags$b("CMACT60:"), " CRAS acessíveis em ≤ 60 min por TP.")
       ),
       tags$p("As variáveis AOP aparecem no popup ao clicar em uma favela, somente quando disponíveis. Elas não estão disponíveis no mapa de cores nem nas Descritivas por cobertura parcial."),
