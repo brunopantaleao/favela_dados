@@ -121,6 +121,13 @@ ind_label   <- setNames(sapply(indicadores, `[[`, "label"), sapply(indicadores, 
 ufs        <- sort(unique(na.omit(fav_df$nm_uf)))
 municipios <- sort(unique(na.omit(fav_df$nm_mun)))
 
+# Favela search choices sorted by population desc
+fav_ord <- fav_df[order(-fav_df$total_pessoas, fav_df$nm_fcu), ]
+fav_search_choices <- setNames(
+  fav_ord$cd_fcu,
+  paste0(fav_ord$nm_fcu, " - ", fav_ord$nm_mun, " - ", fav_ord$nm_uf)
+)
+
 # =========================================================================
 # HELPERS
 # =========================================================================
@@ -236,8 +243,14 @@ ui <- page_navbar(
   fillable = TRUE,
 
   sidebar = sidebar(
-    width = 260,
+    width = 270,
     title = "Filtros",
+    selectizeInput("sel_fav_search",
+      label   = "Buscar favela",
+      choices = NULL,
+      options = list(placeholder = "Digite o nome...", maxOptions = 30)
+    ),
+    hr(),
     selectInput("sel_uf",  "Estado (UF)",  choices = c("Todos" = "", ufs),       selected = "", multiple = TRUE),
     selectInput("sel_mun", "Município",    choices = c("Todos" = "", municipios), selected = "", multiple = TRUE),
     hr(),
@@ -255,13 +268,23 @@ ui <- page_navbar(
   ),
 
   nav_panel(
-    title = tagList(icon("chart-bar"), " Comparações"),
-    layout_columns(col_widths = c(6, 6),
-      card(card_header("Média por Estado (UF)"),        card_body(plotOutput("chart_uf",   height = "420px"))),
-      card(card_header("Média por Município (top 20)"), card_body(plotOutput("chart_mun",  height = "420px")))
+    title = tagList(icon("chart-bar"), " Descritivas"),
+    layout_columns(col_widths = c(12),
+      card(
+        card_header(
+          layout_columns(col_widths = c(8, 4),
+            textOutput("desc_titulo"),
+            checkboxInput("show_worst", "Piores 20", value = FALSE)
+          )
+        ),
+        card_body(plotOutput("chart_top20", height = "480px"))
+      )
     ),
     layout_columns(col_widths = c(12),
-      card(card_header("Distribuição do indicador"), card_body(plotOutput("chart_hist", height = "280px")))
+      card(
+        card_header("Distribuição do indicador"),
+        card_body(plotOutput("chart_hist", height = "260px"))
+      )
     )
   ),
 
@@ -274,6 +297,38 @@ ui <- page_navbar(
       )),
       card_body(DTOutput("tabela_dados"))
     )
+  ),
+
+  nav_panel(
+    title = tagList(icon("info-circle"), " Metadados"),
+    card(card_body(
+      tags$h4("Sobre os dados"),
+      tags$hr(),
+      tags$h5("Polígonos de Favelas (FCU)"),
+      tags$p("Fonte: IBGE, Censo 2022 — 12.348 Favelas e Comunidades Urbanas (FCUs) em todo o território nacional."),
+      tags$h5("Censo IBGE 2022 — Setores Censíitarios"),
+      tags$ul(
+        tags$li(tags$b("Saneamento:"), " % de domicílios com água encanada, esgoto em rede geral e coleta de lixo."),
+        tags$li(tags$b("Renda:"), " renda média do responsável em salários mínimos (SM = R$ 1.212, ref. 2022)."),
+        tags$li(tags$b("Educação:"), " % da população de 15+ anos analfabeta."),
+        tags$li(tags$b("Entorno:"), " % de faces de quadra com via pavimentada, bueiro, iluminação, ponto de ônibus, ciclovia, calçada, obstáculo e rampa.")
+      ),
+      tags$h5("Índices Compostos"),
+      tags$ul(
+        tags$li(tags$b("IDS:"), " média de 6 componentes min-max normalizados: água, esgoto, lixo, banheiros por morador, alfabetização e renda."),
+        tags$li(tags$b("IDA:"), " média de 8 componentes normalizados: via pavimentada, bueiro, iluminação, ponto de ônibus, ciclovia, calçada, obstáculo (invertido) e rampa.")
+      ),
+      tags$h5("Riscos Naturais — SGB/CPRM"),
+      tags$p("Variável binária: 1 se o polígono FCU intersecta área de risco geológico mapeada pelo SGB."),
+      tags$h5("Acesso a Oportunidades — AOP (IPEA, 2019)"),
+      tags$p("Disponível para 20 municípios. Aparece no popup ao clicar em uma favela."),
+      tags$ul(
+        tags$li(tags$b("CMAET60:"), " escolas públicas acessíveis em ≤ 60 min por TP (ET = ensino)."),
+        tags$li(tags$b("CMAST60:"), " hospitais/UPAs acessíveis em ≤ 60 min por TP (ST = saúde)."),
+        tags$li(tags$b("CMATT60:"), " empregos formais acessíveis em ≤ 60 min por TP (TT = trabalho)."),
+        tags$li(tags$b("CMACT60:"), " CRAS acessíveis em ≤ 60 min por TP (CT = assistência social).")
+      )
+    ))
   )
 )
 
@@ -281,6 +336,37 @@ ui <- page_navbar(
 # SERVER
 # =========================================================================
 server <- function(input, output, session) {
+
+  # Populate favela search (server-side, empty start)
+  updateSelectizeInput(session, "sel_fav_search",
+    choices  = c("" = "", fav_search_choices),
+    selected = "",
+    server   = TRUE
+  )
+
+  # Zoom to favela on search selection
+  observeEvent(input$sel_fav_search, {
+    cd <- input$sel_fav_search
+    req(!is.null(cd), nchar(cd) > 0)
+    row <- fav_df[fav_df$cd_fcu == cd, ]
+    req(nrow(row) > 0)
+    uf_fav <- row$nm_uf[1]
+    cur_uf <- isolate(input$sel_uf)
+    if (is.null(cur_uf) || length(cur_uf) == 0 || !uf_fav %in% cur_uf) {
+      updateSelectInput(session, "sel_uf", selected = uf_fav)
+    }
+    fav_row <- fav_sf[fav_sf$CD_FCU == cd, ]
+    req(nrow(fav_row) > 0)
+    ctr    <- suppressWarnings(st_centroid(st_geometry(fav_row)))
+    coords <- st_coordinates(ctr)
+    req(nrow(coords) > 0)
+    popup_html <- make_popup(fav_row)
+    leafletProxy("mapa") %>%
+      setView(lng = coords[1, 1], lat = coords[1, 2], zoom = 16) %>%
+      addPopups(lng = coords[1, 1], lat = coords[1, 2],
+                popup = popup_html[1],
+                options = popupOptions(maxWidth = 320, closeOnClick = TRUE))
+  }, ignoreInit = TRUE)
 
   # Update municipality choices when UF changes
   observeEvent(input$sel_uf, {
@@ -302,10 +388,11 @@ server <- function(input, output, session) {
   # Tab 1 — Mapa
   # -----------------------------------------------------------------------
   output$mapa_titulo <- renderText({
-    if (length(input$sel_uf) == 0 || all(input$sel_uf == ""))
+    if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
       "Mapa — selecione um Estado para visualizar"
-    else
+    } else {
       paste0("Mapa — ", ind_nome(), " | ", nrow(dados_filtrados()), " favelas")
+    }
   })
 
   output$mapa_ui <- renderUI({
@@ -325,13 +412,13 @@ server <- function(input, output, session) {
     req(length(input$sel_uf) > 0, !all(input$sel_uf == ""))
     sf_obj <- sf_filtrado()
     col    <- ind_col()
+    nome   <- ind_nome()
     vals   <- sf_obj[[col]]
     pal    <- colorNumeric(viridis(100), domain = vals, na.color = "#CCCCCC")
-    popups <- make_popup(sf_obj)
+    popups <- unname(make_popup(sf_obj))
 
-    # Determine centre: use first selected UF's capital
-    uf_sel  <- input$sel_uf[1]
-    cap     <- capitais %>% filter(nm_uf == uf_sel)
+    uf_sel   <- input$sel_uf[1]
+    cap      <- capitais[capitais$nm_uf == uf_sel, ]
     map_lat  <- if (nrow(cap) > 0) cap$lat[1]  else -15
     map_lng  <- if (nrow(cap) > 0) cap$lng[1]  else -50
     map_zoom <- if (nrow(cap) > 0) cap$zoom[1] else  5
@@ -345,14 +432,13 @@ server <- function(input, output, session) {
         weight       = 0.8,
         color        = "white",
         popup        = popups,
-        label        = ~paste0(NM_FCU, " — ", ind_nome(), ": ",
-                               ifelse(is.na(vals), "—", round(vals, 3))),
+        label        = ~NM_FCU,
         highlightOptions = highlightOptions(
           weight = 2, color = "#FFD700",
           fillOpacity = 0.95, bringToFront = TRUE
         )
       ) %>%
-      addLegend(pal = pal, values = vals, title = ind_nome(),
+      addLegend(pal = pal, values = vals, title = nome,
                 opacity = 0.9, position = "bottomright")
   })
 
@@ -368,40 +454,43 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   # -----------------------------------------------------------------------
-  # Tab 2 — Comparações
+  # Tab 2 — Descritivas
   # -----------------------------------------------------------------------
   chart_theme <- theme_minimal(base_size = 12) +
     theme(panel.grid.major.y = element_blank(),
-          axis.text.x = element_text(size = 9),
-          plot.title  = element_blank())
+          axis.text.x = element_text(size = 9))
 
-  output$chart_uf <- renderPlot({
-    col <- ind_col(); df <- dados_filtrados()
-    if (!col %in% names(df)) return(NULL)
-    df %>% group_by(UF = nm_uf) %>%
-      summarise(media = mean(.data[[col]], na.rm = TRUE), n = n(), .groups = "drop") %>%
-      filter(!is.na(UF)) %>% mutate(UF = fct_reorder(UF, media)) %>%
-      ggplot(aes(x = media, y = UF, fill = media)) +
-      geom_col(show.legend = FALSE) +
-      geom_text(aes(label = round(media, 2)), hjust = -0.15, size = 3.2) +
-      scale_fill_viridis_c(option = "D") +
-      scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
-      labs(x = ind_nome(), y = NULL) + chart_theme
+  output$desc_titulo <- renderText({
+    worst_flag <- isTRUE(input$show_worst)
+    prefix     <- if (worst_flag) { "Piores 20" } else { "Top 20" }
+    paste0(prefix, " — ", ind_nome())
   })
 
-  output$chart_mun <- renderPlot({
-    col <- ind_col(); df <- dados_filtrados()
-    if (!col %in% names(df)) return(NULL)
-    df %>% group_by(Município = nm_mun) %>%
-      summarise(media = mean(.data[[col]], na.rm = TRUE), n = n(), .groups = "drop") %>%
-      filter(!is.na(Município)) %>% slice_max(order_by = n, n = 20) %>%
-      mutate(Município = fct_reorder(Município, media)) %>%
-      ggplot(aes(x = media, y = Município, fill = media)) +
+  output$chart_top20 <- renderPlot({
+    col        <- ind_col()
+    nome       <- ind_nome()
+    df         <- dados_filtrados()
+    worst_flag <- isTRUE(input$show_worst)
+    if (!col %in% names(df)) { return(NULL) }
+    df_clean <- df[!is.na(df[[col]]), ]
+    df_ord   <- df_clean[order(df_clean[[col]], decreasing = !worst_flag), ]
+    n_rows   <- min(20, nrow(df_ord))
+    df_plot  <- df_ord[seq_len(n_rows), ]
+    df_plot$bar_lbl <- paste0(df_plot$nm_fcu, " (", df_plot$nm_mun, ")")
+    df_plot$bar_lbl <- fct_reorder(df_plot$bar_lbl, df_plot[[col]])
+    pal_opt  <- if (worst_flag) { "B" } else { "D" }
+    cap_txt  <- if (worst_flag) {
+      "20 favelas com menor valor na seleção atual"
+    } else {
+      "20 favelas com maior valor na seleção atual"
+    }
+    ggplot(df_plot, aes(x = .data[[col]], y = bar_lbl, fill = .data[[col]])) +
       geom_col(show.legend = FALSE) +
-      geom_text(aes(label = round(media, 2)), hjust = -0.15, size = 3) +
-      scale_fill_viridis_c(option = "D") +
+      geom_text(aes(label = round(.data[[col]], 2)), hjust = -0.15, size = 3) +
+      scale_fill_viridis_c(option = pal_opt) +
       scale_x_continuous(expand = expansion(mult = c(0, 0.18))) +
-      labs(x = ind_nome(), y = NULL) + chart_theme
+      labs(x = nome, y = NULL, caption = cap_txt) +
+      chart_theme
   })
 
   output$chart_hist <- renderPlot({
@@ -474,10 +563,9 @@ server <- function(input, output, session) {
 
   output$download_csv <- downloadHandler(
     filename = function() {
-      uf_str  <- if (length(input$sel_uf)  > 0 && !all(input$sel_uf  == ""))
-        paste0("_", paste(input$sel_uf,  collapse = "-")) else ""
-      mun_str <- if (length(input$sel_mun) > 0 && !all(input$sel_mun == ""))
-        paste0("_", paste(input$sel_mun, collapse = "-")) else ""
+      u <- input$sel_uf;  m <- input$sel_mun
+      uf_str  <- if (length(u) > 0 && !all(u == "")) { paste0("_", paste(u, collapse = "-")) } else { "" }
+      mun_str <- if (length(m) > 0 && !all(m == "")) { paste0("_", paste(m, collapse = "-")) } else { "" }
       paste0("favelas_br", uf_str, mun_str, "_", format(Sys.Date(), "%Y%m%d"), ".csv")
     },
     content = function(file) { write_csv2(tabela_export(), file) }
