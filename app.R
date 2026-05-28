@@ -34,28 +34,29 @@ fav_df <- read_csv2(CSV_IDS_URL, show_col_types = FALSE) %>%
 riscos <- read_csv2(CSV_RISK_URL, show_col_types = FALSE) %>%
   mutate(cd_fcu = as.character(cd_fcu))
 
-aop <- tryCatch({
-  tmp <- read_csv2(CSV_AOP_URL, show_col_types = FALSE) %>%
-    mutate(cd_fcu = as.character(cd_fcu))
-  # keep whichever naming convention the file uses
-  keep <- intersect(names(tmp),
-                    c("cd_fcu","CMAET60","CMAST60","CMATT60","CMACT60",
-                      "CMAET060","CMAST060","CMATT060","CMACT060"))
-  tmp <- tmp[, keep]
-  # rename 060 -> 60 if present
-  names(tmp) <- sub("060$", "60", names(tmp))
-  tmp
-}, error = function(e) { message("AOP not found - skipping"); NULL })
-
+message("Joining riscos...")
 fav_df <- fav_df %>%
   left_join(riscos %>% select(cd_fcu, tem_risco), by = "cd_fcu")
+message("  Done riscos join")
 
-if (!is.null(aop)) {
+message("Loading AOP...")
+aop <- tryCatch(
+  read_csv2(CSV_AOP_URL, show_col_types = FALSE) %>%
+    mutate(cd_fcu = as.character(cd_fcu)) %>%
+    select(cd_fcu, any_of(c("CMAET60","CMAST60","CMATT60","CMACT60"))),
+  error = function(e) { message("AOP not found - skipping"); NULL }
+)
+message("  AOP loaded: ", if (is.null(aop)) "NULL" else paste(nrow(aop), "rows"))
+
+if (!is.null(aop) && nrow(aop) > 0) {
   fav_df <- fav_df %>% left_join(aop, by = "cd_fcu")
 } else {
-  fav_df$CMAET60 <- NA_real_; fav_df$CMAST60 <- NA_real_
-  fav_df$CMATT60 <- NA_real_; fav_df$CMACT60 <- NA_real_
+  fav_df$CMAET60 <- NA_real_
+  fav_df$CMAST60 <- NA_real_
+  fav_df$CMATT60 <- NA_real_
+  fav_df$CMACT60 <- NA_real_
 }
+message("  AOP join done")
 
 # =========================================================================
 # CAPITAL COORDINATES  (for UF zoom)
@@ -126,11 +127,13 @@ ufs        <- sort(unique(na.omit(fav_df$nm_uf)))
 municipios <- sort(unique(na.omit(fav_df$nm_mun)))
 
 # Favela search: sorted by population desc, starts empty
+message("Building search choices...")
 fav_search_df <- fav_df[order(-fav_df$total_pessoas, fav_df$nm_fcu), ]
 fav_search_choices <- setNames(
   fav_search_df$cd_fcu,
   paste0(fav_search_df$nm_fcu, " - ", fav_search_df$nm_mun, " - ", fav_search_df$nm_uf)
 )
+message("  Search choices built: ", length(fav_search_choices), " favelas")
 
 # =========================================================================
 # HELPERS
@@ -622,4 +625,5 @@ server <- function(input, output, session) {
   )
 }
 
+message("Launching shinyApp...")
 shinyApp(ui, server)
