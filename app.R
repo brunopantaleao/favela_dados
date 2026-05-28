@@ -46,7 +46,8 @@ aop <- tryCatch(
     select(cd_fcu, any_of(c("CMAET60","CMAST60","CMATT60","CMACT60"))),
   error = function(e) { message("AOP not found - skipping"); NULL }
 )
-message("  AOP loaded: ", if (is.null(aop)) "NULL" else paste(nrow(aop), "rows"))
+aop_msg <- if (is.null(aop)) "NULL" else paste(nrow(aop), "rows")
+message("  AOP loaded: ", aop_msg)
 
 if (!is.null(aop) && nrow(aop) > 0) {
   fav_df <- fav_df %>% left_join(aop, by = "cd_fcu")
