@@ -92,121 +92,116 @@ radar_vars <- c(
 )
 
 # =========================================================================
-# MUNICIPALITY CENTROIDS
+# MUNICIPALITY CENTROIDS (tribble — no locale/encoding issues)
 # =========================================================================
-mun_centroids_raw <- read.delim(
-  textConnection(
-"NM_MUN\tSIGLA_UF\txcoord\tycoord
-Alta Floresta D'Oeste\tRO\t-62.274661\t-12.47013228
-Ariquemes\tRO\t-62.95725522\t-9.951890007
-Porto Velho\tRO\t-64.30681433\t-9.153592827
-Vilhena\tRO\t-60.24842048\t-12.09562189
-Rio Branco\tAC\t-68.37106195\t-10.06613495
-Manaus\tAM\t-60.25962801\t-2.625919383
-Boa Vista\tRR\t-60.71795309\t3.117915001
-Belém\tPA\t-48.45991077\t-1.240718656
-Ananindeua\tPA\t-48.38354433\t-1.334076858
-Santarém\tPA\t-55.23845547\t-2.679336294
-Marabá\tPA\t-50.01696035\t-5.629799735
-Macapá\tAP\t-50.69178036\t0.562753202
-Palmas\tTO\t-48.15209202\t-10.22018287
-São Luís\tMA\t-44.28090422\t-2.633690649
-Imperatriz\tMA\t-47.57523827\t-5.339771433
-Teresina\tPI\t-42.74060768\t-5.102658079
-Parnaíba\tPI\t-41.7534448\t-2.959159128
-Fortaleza\tCE\t-38.52800065\t-3.785832855
-Caucaia\tCE\t-38.80969126\t-3.783590266
-Juazeiro do Norte\tCE\t-39.28616477\t-7.1828142
-Sobral\tCE\t-40.22786986\t-3.811040804
-Natal\tRN\t-35.22884144\t-5.803174653
-Mossoró\tRN\t-37.32552954\t-5.17581018
-João Pessoa\tPB\t-34.86953143\t-7.165465402
-Campina Grande\tPB\t-35.96565887\t-7.263553431
-Recife\tPE\t-34.93308627\t-8.039344937
-Caruaru\tPE\t-36.01663484\t-8.18052296
-Olinda\tPE\t-34.86636518\t-7.993100441
-Jaboatão dos Guararapes\tPE\t-35.00334988\t-8.152158991
-Maceió\tAL\t-35.7113905\t-9.522394447
-Aracaju\tSE\t-37.09491352\t-10.99420227
-Salvador\tBA\t-38.51472192\t-12.8734914
-Feira de Santana\tBA\t-39.03398953\t-12.19307644
-Vitória da Conquista\tBA\t-40.91316377\t-15.02228444
-Belo Horizonte\tMG\t-43.95998317\t-19.90268448
-Contagem\tMG\t-44.08400013\t-19.88717723
-Juiz de Fora\tMG\t-43.46473273\t-21.74549947
-Uberlândia\tMG\t-48.33173702\t-19.02777147
-Montes Claros\tMG\t-43.92881683\t-16.62071806
-Vitória\tES\t-39.08796187\t-20.3040098
-Vila Velha\tES\t-40.37825542\t-20.43408374
-Serra\tES\t-40.30162039\t-20.12811892
-Cariacica\tES\t-40.44204913\t-20.290687
-Rio de Janeiro\tRJ\t-43.45099032\t-22.92319262
-São Gonçalo\tRJ\t-42.99700535\t-22.82561799
-Duque de Caxias\tRJ\t-43.29960647\t-22.63249169
-Nova Iguaçu\tRJ\t-43.5018375\t-22.68676081
-Belford Roxo\tRJ\t-43.37756526\t-22.72872849
-São Paulo\tSP\t-46.64809661\t-23.6500802
-Guarulhos\tSP\t-46.45487601\t-23.40269396
-Campinas\tSP\t-47.04379961\t-22.88376008
-São Bernardo do Campo\tSP\t-46.5507918\t-23.81298884
-Santo André\tSP\t-46.44158662\t-23.7279603
-Osasco\tSP\t-46.78926738\t-23.52874927
-Ribeirão Preto\tSP\t-47.82130302\t-21.21084262
-Sorocaba\tSP\t-47.44676543\t-23.46455569
-São José dos Campos\tSP\t-45.92853599\t-23.09056971
-Santos\tSP\t-46.29152919\t-23.86903498
-Mauá\tSP\t-46.44639514\t-23.66616287
-São José do Rio Preto\tSP\t-49.3581065\t-20.79723367
-Mogi das Cruzes\tSP\t-46.1860719\t-23.56957819
-Diadema\tSP\t-46.61142844\t-23.69721428
-Jundiaí\tSP\t-46.91301193\t-23.19460203
-Piracicaba\tSP\t-47.78402389\t-22.72646401
-Bauru\tSP\t-49.12613468\t-22.25399189
-Carapicuíba\tSP\t-46.84192849\t-23.55004064
-Franca\tSP\t-47.38111227\t-20.55522364
-Itaquaquecetuba\tSP\t-46.33387993\t-23.46146369
-Curitiba\tPR\t-49.28824442\t-25.47790954
-Londrina\tPR\t-51.11037658\t-23.51425196
-Maringá\tPR\t-51.9678126\t-23.40094933
-Ponta Grossa\tPR\t-50.08079333\t-25.13969857
-Cascavel\tPR\t-53.37955477\t-25.02777714
-São José dos Pinhais\tPR\t-49.0949456\t-25.66436316
-Foz do Iguaçu\tPR\t-54.48323924\t-25.46796831
-Colombo\tPR\t-49.18802662\t-25.30633595
-Guarapuava\tPR\t-51.49123908\t-25.37135466
-Paranaguá\tPR\t-48.51766216\t-25.52720821
-Florianópolis\tSC\t-48.50819805\t-27.57783391
-Joinville\tSC\t-48.95140521\t-26.24428223
-Blumenau\tSC\t-49.09730925\t-26.88576667
-São José\tSC\t-48.65625577\t-27.5784711
-Criciúma\tSC\t-49.37971559\t-28.71569532
-Itajaí\tSC\t-48.75341716\t-26.96901297
-Chapecó\tSC\t-52.6503387\t-27.12514376
-Porto Alegre\tRS\t-51.16453236\t-30.09531647
-Caxias do Sul\tRS\t-51.02367386\t-29.10219315
-Pelotas\tRS\t-52.34120067\t-31.581114
-Canoas\tRS\t-51.17964922\t-29.91222062
-Santa Maria\tRS\t-53.82503688\t-29.7849214
-Novo Hamburgo\tRS\t-51.0490435\t-29.73475152
-São Leopoldo\tRS\t-51.14485\t-29.75533029
-Viamão\tRS\t-50.86937274\t-30.16700825
-Alvorada\tRS\t-51.03742385\t-29.99498429
-Gravataí\tRS\t-50.94704648\t-29.8894729
-Campo Grande\tMS\t-54.24946376\t-20.91358432
-Dourados\tMS\t-54.83888266\t-22.14486424
-Corumbá\tMS\t-56.72225875\t-18.72235068
-Cuiabá\tMT\t-55.81823179\t-15.59279233
-Várzea Grande\tMT\t-56.24275107\t-15.5624785
-Rondonópolis\tMT\t-54.6847935\t-16.56748514
-Goiânia\tGO\t-49.27378452\t-16.64355088
-Aparecida de Goiânia\tGO\t-49.26248206\t-16.80998738
-Anápolis\tGO\t-48.97288603\t-16.29057977
-Brasília\tDF\t-47.79685087\t-15.78116622"
-  ),
-  stringsAsFactors = FALSE, sep = "\t"
+mun_centroids <- tibble::tribble(
+  ~nm_mun,                        ~lat,       ~lng,
+  "Alta Floresta D'Oeste",   -12.47013,  -62.27466,
+  "Ariquemes",                -9.95189,  -62.95726,
+  "Porto Velho",              -9.15359,  -64.30681,
+  "Vilhena",                 -12.09562,  -60.24842,
+  "Rio Branco",              -10.06613,  -68.37106,
+  "Manaus",                   -2.62592,  -60.25963,
+  "Boa Vista",                 3.11792,  -60.71795,
+  "Belem",                    -1.24072,  -48.45991,
+  "Ananindeua",               -1.33408,  -48.38354,
+  "Santarem",                 -2.67934,  -55.23846,
+  "Maraba",                   -5.62980,  -50.01696,
+  "Macapa",                    0.56275,  -50.69178,
+  "Palmas",                  -10.22018,  -48.15209,
+  "Sao Luis",                 -2.63369,  -44.28090,
+  "Imperatriz",               -5.33977,  -47.57524,
+  "Teresina",                 -5.10266,  -42.74061,
+  "Parnaiba",                 -2.95916,  -41.75344,
+  "Fortaleza",                -3.78583,  -38.52800,
+  "Caucaia",                  -3.78359,  -38.80969,
+  "Juazeiro do Norte",        -7.18281,  -39.28616,
+  "Sobral",                   -3.81104,  -40.22787,
+  "Natal",                    -5.80317,  -35.22884,
+  "Mossoro",                  -5.17581,  -37.32553,
+  "Joao Pessoa",              -7.16547,  -34.86953,
+  "Campina Grande",           -7.26355,  -35.96566,
+  "Recife",                   -8.03934,  -34.93309,
+  "Caruaru",                  -8.18052,  -36.01663,
+  "Olinda",                   -7.99310,  -34.86637,
+  "Jaboatao dos Guararapes",  -8.15216,  -35.00335,
+  "Maceio",                   -9.52239,  -35.71139,
+  "Aracaju",                 -10.99420,  -37.09491,
+  "Salvador",                -12.87349,  -38.51472,
+  "Feira de Santana",        -12.19308,  -39.03399,
+  "Vitoria da Conquista",    -15.02228,  -40.91316,
+  "Belo Horizonte",          -19.90268,  -43.95998,
+  "Contagem",                -19.88718,  -44.08400,
+  "Juiz de Fora",            -21.74550,  -43.46473,
+  "Uberlandia",              -19.02777,  -48.33174,
+  "Montes Claros",           -16.62072,  -43.92882,
+  "Vitoria",                 -20.30401,  -39.08796,
+  "Vila Velha",              -20.43408,  -40.37826,
+  "Serra",                   -20.12812,  -40.30162,
+  "Cariacica",               -20.29069,  -40.44205,
+  "Rio de Janeiro",          -22.92319,  -43.45099,
+  "Sao Goncalo",             -22.82562,  -42.99701,
+  "Duque de Caxias",         -22.63249,  -43.29961,
+  "Nova Iguacu",             -22.68676,  -43.50184,
+  "Belford Roxo",            -22.72873,  -43.37757,
+  "Sao Paulo",               -23.65008,  -46.64810,
+  "Guarulhos",               -23.40269,  -46.45488,
+  "Campinas",                -22.88376,  -47.04380,
+  "Sao Bernardo do Campo",   -23.81299,  -46.55079,
+  "Santo Andre",             -23.72796,  -46.44159,
+  "Osasco",                  -23.52875,  -46.78927,
+  "Ribeirao Preto",          -21.21084,  -47.82130,
+  "Sorocaba",                -23.46456,  -47.44677,
+  "Sao Jose dos Campos",     -23.09057,  -45.92854,
+  "Santos",                  -23.86903,  -46.29153,
+  "Maua",                    -23.66616,  -46.44640,
+  "Sao Jose do Rio Preto",   -20.79723,  -49.35811,
+  "Mogi das Cruzes",         -23.56958,  -46.18607,
+  "Diadema",                 -23.69721,  -46.61143,
+  "Jundiai",                 -23.19460,  -46.91301,
+  "Piracicaba",              -22.72646,  -47.78402,
+  "Bauru",                   -22.25399,  -49.12613,
+  "Carapicuiba",             -23.55004,  -46.84193,
+  "Franca",                  -20.55522,  -47.38111,
+  "Itaquaquecetuba",         -23.46146,  -46.33388,
+  "Curitiba",                -25.47791,  -49.28824,
+  "Londrina",                -23.51425,  -51.11038,
+  "Maringa",                 -23.40095,  -51.96781,
+  "Ponta Grossa",            -25.13970,  -50.08079,
+  "Cascavel",                -25.02778,  -53.37955,
+  "Sao Jose dos Pinhais",    -25.66436,  -49.09495,
+  "Foz do Iguacu",           -25.46797,  -54.48324,
+  "Colombo",                 -25.30634,  -49.18803,
+  "Guarapuava",              -25.37135,  -51.49124,
+  "Paranagua",               -25.52721,  -48.51766,
+  "Florianopolis",           -27.57783,  -48.50820,
+  "Joinville",               -26.24428,  -48.95141,
+  "Blumenau",                -26.88577,  -49.09731,
+  "Sao Jose",                -27.57847,  -48.65626,
+  "Criciuma",                -28.71570,  -49.37972,
+  "Itajai",                  -26.96901,  -48.75342,
+  "Chapeco",                 -27.12514,  -52.65034,
+  "Porto Alegre",            -30.09532,  -51.16453,
+  "Caxias do Sul",           -29.10219,  -51.02367,
+  "Pelotas",                 -31.58111,  -52.34120,
+  "Canoas",                  -29.91222,  -51.17965,
+  "Santa Maria",             -29.78492,  -53.82504,
+  "Novo Hamburgo",           -29.73475,  -51.04904,
+  "Sao Leopoldo",            -29.75533,  -51.14485,
+  "Viamao",                  -30.16701,  -50.86937,
+  "Alvorada",                -29.99498,  -51.03742,
+  "Gravitai",                -29.88947,  -50.94705,
+  "Campo Grande",            -20.91358,  -54.24946,
+  "Dourados",                -22.14486,  -54.83888,
+  "Corumba",                 -18.72235,  -56.72226,
+  "Cuiaba",                  -15.59279,  -55.81823,
+  "Varzea Grande",           -15.56248,  -56.24275,
+  "Rondonopolis",            -16.56749,  -54.68480,
+  "Goiania",                 -16.64355,  -49.27378,
+  "Aparecida de Goiania",    -16.80999,  -49.26248,
+  "Anapolis",                -16.29058,  -48.97289,
+  "Brasilia",                -15.78117,  -47.79685
 )
-mun_centroids <- mun_centroids_raw %>%
-  transmute(nm_mun = NM_MUN, lng = xcoord, lat = ycoord)
 
 # =========================================================================
 # CAPITAL COORDINATES
@@ -656,7 +651,11 @@ server <- function(input, output, session) {
   # Auto-zoom on municipality change
   observeEvent(input$sel_mun, {
     req(length(input$sel_mun) > 0, !all(input$sel_mun == ""))
-    centro <- mun_centroids %>% filter(nm_mun == input$sel_mun[1])
+    mun_q  <- input$sel_mun[1]
+    centro <- mun_centroids %>% filter(
+      tolower(iconv(nm_mun, to="ASCII//TRANSLIT")) ==
+      tolower(iconv(mun_q,  to="ASCII//TRANSLIT"))
+    )
     if (nrow(centro) > 0)
       leafletProxy("mapa") %>% setView(lng = centro$lng[1], lat = centro$lat[1], zoom = 12)
   }, ignoreInit = TRUE)
