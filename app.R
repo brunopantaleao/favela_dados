@@ -270,11 +270,19 @@ ind_label   <- setNames(sapply(indicadores, `[[`, "label"), sapply(indicadores, 
 ufs        <- sort(unique(na.omit(fav_df$nm_uf)))
 municipios <- sort(unique(na.omit(fav_df$nm_mun)))
 
-# Favela search choices: sorted by population desc, labeled "Nome — Cidade — UF"
-fav_search_choices <- fav_df %>%
-  arrange(desc(total_pessoas), nm_fcu) %>%
-  mutate(label = paste0(nm_fcu, " — ", nm_mun, " — ", nm_uf)) %>%
-  { setNames(.$cd_fcu, .$label) }
+# Favela search choices: sorted by population desc (with safe fallback)
+fav_search_choices <- tryCatch({
+  df_sorted <- if ("total_pessoas" %in% names(fav_df)) {
+    fav_df[order(-fav_df$total_pessoas, fav_df$nm_fcu), ]
+  } else {
+    fav_df[order(fav_df$nm_fcu), ]
+  }
+  lbl <- paste0(df_sorted$nm_fcu, " - ", df_sorted$nm_mun, " - ", df_sorted$nm_uf)
+  setNames(df_sorted$cd_fcu, lbl)
+}, error = function(e) {
+  message("fav_search_choices error: ", e$message)
+  setNames(fav_df$cd_fcu, fav_df$nm_fcu)
+})
 
 # =========================================================================
 # HELPERS
@@ -550,10 +558,13 @@ server <- function(input, output, session) {
 
   # Populate radar favela picker (server-side, all favelas)
   observe({
-    choices_radar <- fav_df %>%
-      arrange(desc(total_pessoas), nm_fcu) %>%
-      mutate(label = paste0(nm_fcu, " — ", nm_mun, " — ", nm_uf)) %>%
-      { setNames(.$cd_fcu, .$label) }
+    df_r  <- if ("total_pessoas" %in% names(fav_df)) {
+      fav_df[order(-fav_df$total_pessoas, fav_df$nm_fcu), ]
+    } else {
+      fav_df[order(fav_df$nm_fcu), ]
+    }
+    lbl_r <- paste0(df_r$nm_fcu, " - ", df_r$nm_mun, " - ", df_r$nm_uf)
+    choices_radar <- setNames(df_r$cd_fcu, lbl_r)
     updateSelectizeInput(session, "sel_favelas_radar",
       choices  = choices_radar,
       selected = NULL,
