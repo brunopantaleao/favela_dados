@@ -309,10 +309,10 @@ make_popup <- function(sf_obj) {
 
   apply(df_rows, 1, function(r) {
     r_aop <- c(
-      aop_row_html("Empregos acessíveis",  suppressWarnings(as.numeric(r["CMAET60"]))),
-      aop_row_html("Escolas acessíveis",   suppressWarnings(as.numeric(r["CMAST60"]))),
-      aop_row_html("Hospitais acessíveis", suppressWarnings(as.numeric(r["CMATT60"]))),
-      aop_row_html("CRAS acessíveis",      suppressWarnings(as.numeric(r["CMACT60"])))
+      aop_row_html("Escolas públicas acessíveis",  suppressWarnings(as.numeric(r["CMAET60"]))),
+      aop_row_html("Hospitais/UPAs acessíveis",    suppressWarnings(as.numeric(r["CMAST60"]))),
+      aop_row_html("Empregos acessíveis",          suppressWarnings(as.numeric(r["CMATT60"]))),
+      aop_row_html("CRAS acessíveis",              suppressWarnings(as.numeric(r["CMACT60"])))
     )
     aop_block <- if (any(r_aop != "")) {
       paste0(
@@ -501,10 +501,10 @@ ui <- page_navbar(
       tags$p("Municípios cobertos:"),
       tags$p(tags$em("Belém, Belo Horizonte, Brasília, Campinas, Campo Grande, Curitiba, Duque de Caxias, Fortaleza, Goiânia, Guarulhos, Maceió, Manaus, Natal, Porto Alegre, Recife, Rio de Janeiro, Salvador, São Gonçalo, São Luís, São Paulo.")),
       tags$ul(
-        tags$li(tags$b("CMATT60:"), " empregos formais acessíveis em ≤ 60 min de transporte público (pico manhã)."),
-        tags$li(tags$b("CMAST60:"), " escolas públicas acessíveis em ≤ 60 min por TP."),
-        tags$li(tags$b("CMAET60:"), " hospitais/UPAs acessíveis em ≤ 60 min por TP."),
-        tags$li(tags$b("CMACT60:"), " CRAS acessíveis em ≤ 60 min por TP.")
+        tags$li(tags$b("CMAET60:"), " escolas públicas acessíveis em ≤ 60 min por transporte público (todas as etapas)."),
+        tags$li(tags$b("CMAST60:"), " hospitais e UPAs acessíveis em ≤ 60 min por transporte público (todas as complexidades)."),
+        tags$li(tags$b("CMATT60:"), " empregos formais acessíveis em ≤ 60 min por transporte público (todos os níveis de escolaridade), pico da manhã."),
+        tags$li(tags$b("CMACT60:"), " CRAS acessíveis em ≤ 60 min por transporte público.")
       ),
       tags$p("As variáveis AOP aparecem no popup ao clicar em uma favela, somente quando disponíveis. Elas não estão disponíveis no mapa de cores nem nas Descritivas por cobertura parcial."),
 
