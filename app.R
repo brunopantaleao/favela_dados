@@ -247,8 +247,7 @@ fav_search_choices <- setNames(
   fav_df$cd_fcu,
   paste0(fav_df$nm_fcu, " - ", fav_df$nm_mun)
 )
-fav_search_choices <- fav_search_choices[order(total_pessoas)]
-
+fav_search_choices <- fav_search_choices[order(names(fav_search_choices))]
 # =========================================================================
 # HELPERS
 # =========================================================================
