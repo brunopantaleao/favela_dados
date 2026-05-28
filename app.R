@@ -234,20 +234,7 @@ ind_groups  <- sapply(indicadores, `[[`, "group")
 ind_grouped <- split(ind_choices, ind_groups)
 ind_label   <- setNames(sapply(indicadores, `[[`, "label"), sapply(indicadores, `[[`, "col"))
 
-# Radar variables (used in Comparar tab)
-radar_vars <- c(
-  "IDS"       = "IDS",
-  "IDA"       = "IDA",
-  "PERC_AGUA" = "Água",
-  "PERC_ESGO" = "Esgoto",
-  "PERC_LIXO" = "Lixo",
-  "RENDA_SM"  = "Renda",
-  "P_VIAPAV"  = "Via Pav.",
-  "P_ILUM"    = "Iluminação",
-  "P_CALCAD"  = "Calçada",
-  "P_ONTON"   = "Ponto Ônibus",
-  "PERC_ANALF"= "Analfab."
-)
+ 
 
 # =========================================================================
 # GEO HIERARCHIES
@@ -439,24 +426,7 @@ ui <- page_navbar(
     )
   ),
 
-  # -----------------------------------------------------------------------
-  nav_panel(
-    title = tagList(icon("spider"), " Comparar"),
-    card(
-      card_header("Comparação em radar — selecione até 5 favelas"),
-      card_body(
-        selectizeInput("sel_favelas_radar",
-          label    = "Favelas para comparar",
-          choices  = NULL,
-          multiple = TRUE,
-          options  = list(maxItems = 5, placeholder = "Digite o nome da favela...")
-        ),
-        plotOutput("chart_radar", height = "500px")
-      )
-    )
-  ),
-
-  # -----------------------------------------------------------------------
+   # -----------------------------------------------------------------------
   nav_panel(
     title = tagList(icon("table"), " Dados"),
     card(
@@ -534,17 +504,6 @@ server <- function(input, output, session) {
     updateSelectInput(session, "sel_mun",
       choices  = c("Todos" = "", muns_filtrados),
       selected = input$sel_mun[input$sel_mun %in% muns_filtrados]
-    )
-  })
-
-  # Populate radar favela picker (server-side, scoped to current filter)
-  observe({
-    df <- dados_filtrados()
-    choices <- setNames(df$cd_fcu, paste0(df$nm_fcu, " — ", df$nm_mun, " — ", df$nm_uf))
-    updateSelectizeInput(session, "sel_favelas_radar",
-      choices  = choices,
-      selected = NULL,
-      server   = TRUE
     )
   })
 
