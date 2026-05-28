@@ -485,7 +485,11 @@ selectizeInput("sel_favela_search",
 # SERVER
 # =========================================================================
 server <- function(input, output, session) {
-
+  
+  updateSelectizeInput(session, "sel_favela_search",
+    choices = fav_search_choices,
+    server  = TRUE
+  )
 
   # Update municipalities when UF changes
   observeEvent(input$sel_uf, {
