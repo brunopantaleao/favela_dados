@@ -1,4 +1,4 @@
-# Favelas BR — Plataforma de Análise
+# Favelas BR - Plataforma de Analise
 
 GEOJSON_URL  <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_br_simplified.geojson"
 CSV_IDS_URL  <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_ids_ida.csv"
@@ -40,7 +40,7 @@ aop <- tryCatch(
     select(cd_fcu, any_of(c("CMAET60","CMAST60","CMATT60","CMACT60",
                              "CMAET060","CMAST060","CMATT060","CMACT060"))) %>%
     rename_with(~ gsub("0$", "", .x), ends_with("060")),
-  error = function(e) { message("AOP file not found — skipping."); NULL }
+  error = function(e) { message("AOP file not found - skipping."); NULL }
 )
 
 fav_df <- fav_df %>%
@@ -78,21 +78,21 @@ ind_col_map <- c(
 
 # Radar vars use fav_df long names directly
 radar_vars <- c(
-  "IDS"                     = "IDS",
-  "IDA"                     = "IDA",
-  "perc_agua_adequada"      = "Água",
-  "perc_esgoto_adequado"    = "Esgoto",
-  "perc_lixo_coleta"        = "Lixo",
-  "renda_sm_pond"           = "Renda",
-  "perc_via_pavimentada"    = "Via Pav.",
-  "perc_iluminacao_publica" = "Iluminação",
-  "perc_calcada"            = "Calçada",
-  "perc_ponto_onibus"       = "Ponto Ônibus",
+  "IDS"                       = "IDS",
+  "IDA"                       = "IDA",
+  "perc_agua_adequada"        = "Agua",
+  "perc_esgoto_adequado"      = "Esgoto",
+  "perc_lixo_coleta"          = "Lixo",
+  "renda_sm_pond"             = "Renda",
+  "perc_via_pavimentada"      = "Via Pav.",
+  "perc_iluminacao_publica"   = "Iluminacao",
+  "perc_calcada"              = "Calcada",
+  "perc_ponto_onibus"         = "Ponto Onibus",
   "perc_analfabeto_populacao" = "Analfab."
 )
 
 # =========================================================================
-# MUNICIPALITY CENTROIDS (tribble — no locale/encoding issues)
+# MUNICIPALITY CENTROIDS (tribble - no locale/encoding issues)
 # =========================================================================
 mun_centroids <- tibble::tribble(
   ~nm_mun,                        ~lat,       ~lng,
@@ -210,53 +210,53 @@ capitais <- tibble::tribble(
   ~nm_uf,                  ~lat,     ~lng,  ~zoom,
   "Acre",                 -9.975,  -67.824,   11,
   "Alagoas",              -9.666,  -35.735,   11,
-  "Amapá",                 0.034,  -51.066,   11,
+  "Amapa",                 0.034,  -51.066,   11,
   "Amazonas",             -3.119,  -60.021,   11,
   "Bahia",               -12.971,  -38.501,   11,
-  "Ceará",                -3.717,  -38.543,   11,
+  "Ceara",                -3.717,  -38.543,   11,
   "Distrito Federal",    -15.779,  -47.929,   11,
-  "Espírito Santo",      -20.319,  -40.338,   11,
-  "Goiás",               -16.686,  -49.264,   11,
-  "Maranhão",             -2.530,  -44.303,   11,
+  "Espirito Santo",      -20.319,  -40.338,   11,
+  "Goias",               -16.686,  -49.264,   11,
+  "Maranhao",             -2.530,  -44.303,   11,
   "Mato Grosso",         -15.601,  -56.097,   11,
   "Mato Grosso do Sul",  -20.469,  -54.620,   11,
   "Minas Gerais",        -19.917,  -43.934,   11,
-  "Pará",                 -1.455,  -48.502,   11,
-  "Paraíba",              -7.115,  -34.863,   11,
-  "Paraná",              -25.428,  -49.273,   11,
+  "Para",                 -1.455,  -48.502,   11,
+  "Paraiba",              -7.115,  -34.863,   11,
+  "Parana",              -25.428,  -49.273,   11,
   "Pernambuco",           -8.054,  -34.881,   11,
-  "Piauí",                -5.092,  -42.803,   11,
+  "Piaui",                -5.092,  -42.803,   11,
   "Rio de Janeiro",      -22.906,  -43.173,   11,
   "Rio Grande do Norte",  -5.795,  -35.209,   11,
   "Rio Grande do Sul",   -30.033,  -51.230,   11,
-  "Rondônia",             -8.761,  -63.902,   11,
+  "Rondonia",             -8.761,  -63.902,   11,
   "Roraima",               2.819,  -60.673,   11,
   "Santa Catarina",      -27.595,  -48.548,   11,
-  "São Paulo",           -23.550,  -46.633,   11,
+  "Sao Paulo",           -23.550,  -46.633,   11,
   "Sergipe",             -10.916,  -37.073,   11,
   "Tocantins",           -10.249,  -48.324,   11
 )
 
 # =========================================================================
-# INDICATOR CATALOGUE  (AOP not in dropdown — shown in popup only)
+# INDICATOR CATALOGUE  (AOP not in dropdown - shown in popup only)
 # =========================================================================
 indicadores <- list(
-  list(col = "IDS",       label = "IDS — Índice de Desenvolvimento Social",   dir = +1, group = "Índices"),
-  list(col = "IDA",       label = "IDA — Índice de Acessibilidade Urbana",    dir = +1, group = "Índices"),
-  list(col = "PERC_AGUA", label = "Água encanada (%)",                        dir = +1, group = "Saneamento"),
+  list(col = "IDS",       label = "IDS - Indice de Desenvolvimento Social",   dir = +1, group = "Indices"),
+  list(col = "IDA",       label = "IDA - Indice de Acessibilidade Urbana",    dir = +1, group = "Indices"),
+  list(col = "PERC_AGUA", label = "Agua encanada (%)",                        dir = +1, group = "Saneamento"),
   list(col = "PERC_ESGO", label = "Esgoto rede geral (%)",                    dir = +1, group = "Saneamento"),
   list(col = "PERC_LIXO", label = "Coleta de lixo (%)",                       dir = +1, group = "Saneamento"),
-  list(col = "RENDA_SM",  label = "Renda média (sal. mín.)",                  dir = +1, group = "Renda e Educação"),
-  list(col = "PERC_ANALF",label = "Analfabetismo 15+ (%)",                    dir = -1, group = "Renda e Educação"),
+  list(col = "RENDA_SM",  label = "Renda media (sal. min.)",                  dir = +1, group = "Renda e Educacao"),
+  list(col = "PERC_ANALF",label = "Analfabetismo 15+ (%)",                    dir = -1, group = "Renda e Educacao"),
   list(col = "P_VIAPAV",  label = "Via pavimentada (%)",                      dir = +1, group = "Acessibilidade Urbana"),
   list(col = "P_BUEIRO",  label = "Bueiro / boca de lobo (%)",                dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "P_ILUM",    label = "Iluminação pública (%)",                   dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "P_ONTON",   label = "Ponto de ônibus (%)",                      dir = +1, group = "Acessibilidade Urbana"),
+  list(col = "P_ILUM",    label = "Iluminacao publica (%)",                   dir = +1, group = "Acessibilidade Urbana"),
+  list(col = "P_ONTON",   label = "Ponto de onibus (%)",                      dir = +1, group = "Acessibilidade Urbana"),
   list(col = "P_VIABIC",  label = "Ciclovia / ciclofaixa (%)",                dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "P_CALCAD",  label = "Calçada (%)",                              dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "P_OBSTAC",  label = "Obstáculo na calçada (%)",                 dir = -1, group = "Acessibilidade Urbana"),
+  list(col = "P_CALCAD",  label = "Calcada (%)",                              dir = +1, group = "Acessibilidade Urbana"),
+  list(col = "P_OBSTAC",  label = "Obstaculo na calcada (%)",                 dir = -1, group = "Acessibilidade Urbana"),
   list(col = "P_RAMPA",   label = "Rampa para cadeirante (%)",                dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "tem_risco", label = "Exposição a risco natural (flag)",         dir = -1, group = "Riscos Naturais")
+  list(col = "tem_risco", label = "Exposicao a risco natural (flag)",         dir = -1, group = "Riscos Naturais")
 )
 
 ind_choices <- setNames(sapply(indicadores, `[[`, "col"), sapply(indicadores, `[[`, "label"))
@@ -626,7 +626,12 @@ server <- function(input, output, session) {
     popups <- unname(make_popup(sf_obj))
 
     uf_sel   <- if (uf_active) input$sel_uf[1] else NULL
-    cap      <- if (!is.null(uf_sel)) capitais %>% filter(nm_uf == uf_sel) else NULL
+    cap      <- if (!is.null(uf_sel)) {
+      capitais %>% filter(
+        tolower(gsub("[^a-z]", "", iconv(nm_uf,  to="ASCII//TRANSLIT"))) ==
+        tolower(gsub("[^a-z]", "", iconv(uf_sel, to="ASCII//TRANSLIT")))
+      )
+    } else NULL
     map_lat  <- if (!is.null(cap) && nrow(cap) > 0) cap$lat[1]  else -15
     map_lng  <- if (!is.null(cap) && nrow(cap) > 0) cap$lng[1]  else -50
     map_zoom <- if (!is.null(cap) && nrow(cap) > 0) cap$zoom[1] else  5
@@ -654,7 +659,11 @@ server <- function(input, output, session) {
   # Auto-zoom on UF change
   observeEvent(input$sel_uf, {
     req(length(input$sel_uf) > 0, !all(input$sel_uf == ""))
-    cap <- capitais %>% filter(nm_uf == input$sel_uf[1])
+    uf_q <- input$sel_uf[1]
+    cap  <- capitais %>% filter(
+      tolower(gsub("[^a-z]", "", iconv(nm_uf, to="ASCII//TRANSLIT"))) ==
+      tolower(gsub("[^a-z]", "", iconv(uf_q,  to="ASCII//TRANSLIT")))
+    )
     if (nrow(cap) > 0)
       leafletProxy("mapa") %>% setView(lng = cap$lng[1], lat = cap$lat[1], zoom = cap$zoom[1])
   }, ignoreInit = TRUE)
