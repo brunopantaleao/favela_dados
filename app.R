@@ -400,10 +400,11 @@ server <- function(input, output, session) {
     search_active <- !is.null(input$sel_favela_search) &&
                      nchar(input$sel_favela_search) > 0
     uf_active <- length(input$sel_uf) > 0 && !all(input$sel_uf == "")
-    if (!search_active && !uf_active)
+    if (!search_active && !uf_active) {
       "Mapa \u2014 selecione um Estado ou busque uma favela"
-    else
+    } else {
       paste0("Mapa \u2014 ", ind_nome(), " | ", nrow(dados_filtrados()), " favelas")
+    }
   })
 
   output$mapa_ui <- renderUI({
@@ -615,10 +616,14 @@ server <- function(input, output, session) {
 
   output$download_csv <- downloadHandler(
     filename = function() {
-      uf_str  <- if (length(input$sel_uf)  > 0 && !all(input$sel_uf  == ""))
-        paste0("_", paste(input$sel_uf,  collapse = "-")) else ""
-      mun_str <- if (length(input$sel_mun) > 0 && !all(input$sel_mun == ""))
-        paste0("_", paste(input$sel_mun, collapse = "-")) else ""
+      uf_sel  <- input$sel_uf
+      mun_sel <- input$sel_mun
+      uf_str  <- if (length(uf_sel)  > 0 && !all(uf_sel  == "")) {
+        paste0("_", paste(uf_sel,  collapse = "-"))
+      } else { "" }
+      mun_str <- if (length(mun_sel) > 0 && !all(mun_sel == "")) {
+        paste0("_", paste(mun_sel, collapse = "-"))
+      } else { "" }
       paste0("favelas_br", uf_str, mun_str, "_",
              format(Sys.Date(), "%Y%m%d"), ".csv")
     },
