@@ -775,13 +775,15 @@ server <- function(input, output, session) {
 
     req(nrow(df_sel) >= 2)
 
-    # Normalise 0–1 globally
-    for (v in vnames) {
-      mn <- min(fav_df[[v]], na.rm = TRUE)
-      mx <- max(fav_df[[v]], na.rm = TRUE)
-      df_sel[[v]] <- if (mx > mn) (df_sel[[v]] - mn) / (mx - mn) else 0.5
-      df_sel[[v]][is.na(df_sel[[v]])] <- 0
-    }
+    # Normalise 0-1 globally (lapply avoids for-loop parser issues)
+    df_sel[vnames] <- lapply(vnames, function(v) {
+      mn  <- min(fav_df[[v]], na.rm = TRUE)
+      mx  <- max(fav_df[[v]], na.rm = TRUE)
+      val <- df_sel[[v]]
+      nrm <- if (mx > mn) { (val - mn) / (mx - mn) } else { rep(0.5, length(val)) }
+      nrm[is.na(nrm)] <- 0
+      nrm
+    })
 
     angles <- seq(0, 2 * pi, length.out = n_vars + 1)[1:n_vars]
 
