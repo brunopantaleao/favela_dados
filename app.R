@@ -119,39 +119,6 @@ ind_groups  <- sapply(indicadores, `[[`, "group")
 ind_grouped <- split(ind_choices, ind_groups)
 ind_label   <- setNames(sapply(indicadores, `[[`, "label"), sapply(indicadores, `[[`, "col"))
 
-# Radar: uses GeoJSON short column names (same as fav_sf / dropdown)
-radar_vars <- c(
-  IDS        = "IDS",
-  IDA        = "IDA",
-  PERC_AGUA  = "\u00c1gua",
-  PERC_ESGO  = "Esgoto",
-  PERC_LIXO  = "Lixo",
-  RENDA_SM   = "Renda",
-  P_VIAPAV   = "Via Pav.",
-  P_ILUM     = "Ilumina\u00e7\u00e3o",
-  P_CALCAD   = "Cal\u00e7ada",
-  P_ONTON    = "Ponto \u00d4nibus",
-  PERC_ANALF = "Analfab."
-)
-
-# fav_df column equivalents for radar (GeoJSON names map directly here
-# because fav_df also carries these columns after join)
-# NOTE: fav_df has full-name cols; GeoJSON short names are ONLY in fav_sf.
-# Radar reads from fav_df using the mapping below.
-radar_df_cols <- c(
-  IDS        = "IDS",
-  IDA        = "IDA",
-  PERC_AGUA  = "perc_agua_adequada",
-  PERC_ESGO  = "perc_esgoto_adequado",
-  PERC_LIXO  = "perc_lixo_coleta",
-  RENDA_SM   = "renda_sm_pond",
-  P_VIAPAV   = "perc_via_pavimentada",
-  P_ILUM     = "perc_iluminacao_publica",
-  P_CALCAD   = "perc_calcada",
-  P_ONTON    = "perc_ponto_onibus",
-  PERC_ANALF = "perc_analfabeto_populacao"
-)
-
 # =========================================================================
 # GEO HIERARCHIES
 # =========================================================================
@@ -351,22 +318,6 @@ ui <- page_navbar(
   ),
 
   nav_panel(
-    title = tagList(icon("circle-nodes"), " Comparar"),
-    card(
-      card_header("Compara\u00e7\u00e3o em radar \u2014 selecione 2 a 5 favelas"),
-      card_body(
-        selectizeInput("sel_favelas_radar",
-          label    = "Favelas para comparar",
-          choices  = NULL,
-          multiple = TRUE,
-          options  = list(maxItems = 5, placeholder = "Digite o nome da favela...")
-        ),
-        plotOutput("chart_radar", height = "520px")
-      )
-    )
-  ),
-
-  nav_panel(
     title = tagList(icon("table"), " Dados"),
     card(
       card_header(layout_columns(col_widths = c(8, 4),
@@ -422,14 +373,6 @@ server <- function(input, output, session) {
     selected = "",
     server   = TRUE
   )
-
-  # Radar choices: all favelas sorted by population
-  updateSelectizeInput(session, "sel_favelas_radar",
-    choices = fav_search_choices,
-    selected = NULL,
-    server  = TRUE
-  )
-
   # Update municipalities when UF filter changes
   observeEvent(input$sel_uf, {
     muns_filtrados <- if (length(input$sel_uf) > 0 && !all(input$sel_uf == "")) {
@@ -609,108 +552,6 @@ server <- function(input, output, session) {
   })
 
   # -----------------------------------------------------------------------
-  # Radar
-  # -----------------------------------------------------------------------
-  output$chart_radar <- renderPlot({
-    req(length(input$sel_favelas_radar) >= 2)
-
-    sel     <- input$sel_favelas_radar
-    # Use fav_df long column names via radar_df_cols mapping
-    vkeys   <- names(radar_df_cols)           # short keys (IDS, PERC_AGUA, ...)
-    vcols   <- unname(radar_df_cols)          # fav_df column names
-    vlabels <- unname(radar_vars[vkeys])      # display labels
-    n_vars  <- length(vkeys)
-
-    # Only keep cols that exist
-    exists_mask <- vcols %in% names(fav_df)
-    vkeys   <- vkeys[exists_mask]
-    vcols   <- vcols[exists_mask]
-    vlabels <- vlabels[exists_mask]
-    n_vars  <- length(vkeys)
-    req(n_vars >= 3)
-
-    df_sel <- fav_df[fav_df$cd_fcu %in% sel, c("cd_fcu","nm_fcu","nm_mun","nm_uf", vcols)]
-    req(nrow(df_sel) >= 2)
-    df_sel$favela <- paste0(df_sel$nm_fcu, "\n(", df_sel$nm_mun, ")")
-
-    # Normalise 0-1 globally using lapply (no for loop)
-    df_sel[vcols] <- lapply(vcols, function(v) {
-      mn  <- min(fav_df[[v]], na.rm = TRUE)
-      mx  <- max(fav_df[[v]], na.rm = TRUE)
-      raw <- df_sel[[v]]
-      nrm <- if (mx > mn) (raw - mn) / (mx - mn) else rep(0.5, length(raw))
-      nrm[is.na(nrm)] <- 0
-      nrm
-    })
-
-    angles <- seq(0, 2 * pi, length.out = n_vars + 1)[seq_len(n_vars)]
-
-    polys <- do.call(rbind, lapply(seq_len(nrow(df_sel)), function(i) {
-      vals  <- as.numeric(df_sel[i, vcols])
-      vals_c <- c(vals, vals[1])
-      ang_c  <- c(angles, angles[1])
-      data.frame(x = vals_c * cos(ang_c), y = vals_c * sin(ang_c),
-                 favela = df_sel$favela[i], stringsAsFactors = FALSE)
-    }))
-
-    label_df <- data.frame(
-      x = 1.22 * cos(angles), y = 1.22 * sin(angles),
-      label = vlabels, stringsAsFactors = FALSE
-    )
-
-    grid_df <- do.call(rbind, lapply(c(0.25, 0.5, 0.75, 1.0), function(r) {
-      th <- seq(0, 2 * pi, length.out = 200)
-      data.frame(x = r * cos(th), y = r * sin(th), r = as.character(r))
-    }))
-
-    spoke_df <- data.frame(
-      x = cos(angles), y = sin(angles), xend = 0, yend = 0
-    )
-
-    pal_colors <- scales::hue_pal()(nrow(df_sel))
-    names(pal_colors) <- df_sel$favela
-
-    ggplot() +
-      geom_path(data = grid_df,
-                aes(x = x, y = y, group = r),
-                colour = "grey82", linewidth = 0.3) +
-      geom_segment(data = spoke_df,
-                   aes(x = x, y = y, xend = xend, yend = yend),
-                   colour = "grey72", linewidth = 0.4) +
-      geom_polygon(data = polys,
-                   aes(x = x, y = y, colour = favela, fill = favela, group = favela),
-                   alpha = 0.15, linewidth = 0.9) +
-      geom_point(
-        data = do.call(rbind, lapply(
-          split(polys, polys$favela),
-          function(d) d[seq_len(nrow(d) - 1), ]
-        )),
-        aes(x = x, y = y, colour = favela), size = 2.5
-      ) +
-      geom_text(data = label_df,
-                aes(x = x, y = y, label = label),
-                size = 3.2, colour = "grey20", fontface = "bold",
-                lineheight = 0.85) +
-      annotate("text",
-               x = 0.5 * cos(angles[1]) + 0.03,
-               y = 0.5 * sin(angles[1]) - 0.05,
-               label = "0.5", size = 2.6, colour = "grey60") +
-      annotate("text",
-               x = 1.0 * cos(angles[1]) + 0.03,
-               y = 1.0 * sin(angles[1]) - 0.05,
-               label = "1.0", size = 2.6, colour = "grey60") +
-      coord_fixed(xlim = c(-1.4, 1.4), ylim = c(-1.4, 1.4)) +
-      scale_colour_manual(values = pal_colors) +
-      scale_fill_manual(values = pal_colors) +
-      labs(colour = NULL, fill = NULL,
-           caption = "Valores normalizados 0\u20131 em rela\u00e7\u00e3o ao universo nacional de favelas") +
-      theme_void(base_size = 12) +
-      theme(legend.position  = "bottom",
-            legend.text      = element_text(size = 9),
-            plot.caption     = element_text(size = 8, colour = "grey50", hjust = 0.5),
-            plot.margin      = margin(12, 12, 12, 12))
-  })
-
   # -----------------------------------------------------------------------
   # Dados
   # -----------------------------------------------------------------------
