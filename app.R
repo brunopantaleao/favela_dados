@@ -1,13 +1,10 @@
 # Favelas BR — Plataforma de Análise
-# Deployed version — all data fetched from GitHub
 
-# GitHub raw URLs
 GEOJSON_URL  <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_br_simplified.geojson"
 CSV_IDS_URL  <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_ids_ida.csv"
 CSV_RISK_URL <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_riscos.csv"
 CSV_AOP_URL  <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_acesso_oportunidades.csv"
 
-# Packages
 library(shiny)
 library(bslib)
 library(sf)
@@ -19,6 +16,7 @@ library(ggplot2)
 library(forcats)
 library(viridisLite)
 library(scales)
+library(tidyr)
 
 # =========================================================================
 # DATA LOADING
@@ -30,32 +28,153 @@ fav_sf <- st_read(GEOJSON_URL, quiet = TRUE) %>%
   mutate(CD_FCU = as.character(CD_FCU))
 message("  Loaded: ", nrow(fav_sf), " FCUs")
 
-fav_df <- read_csv2(CSV_IDS_URL, show_col_types = FALSE)
+fav_df <- read_csv2(CSV_IDS_URL, show_col_types = FALSE) %>%
+  mutate(cd_fcu = as.character(cd_fcu))
 
 riscos <- read_csv2(CSV_RISK_URL, show_col_types = FALSE) %>%
   mutate(cd_fcu = as.character(cd_fcu))
 
-fav_df <- fav_df %>%
-  mutate(cd_fcu = as.character(cd_fcu)) %>%
-  left_join(riscos %>% select(cd_fcu, tem_risco), by = "cd_fcu")
-
 aop <- tryCatch(
   read_csv2(CSV_AOP_URL, show_col_types = FALSE) %>%
     mutate(cd_fcu = as.character(cd_fcu)) %>%
-    select(cd_fcu, any_of(c("CMAET60","CMAST60","CMATT60","CMACT60"))),
-  error = function(e) { message("AOP not found"); NULL }
+    select(cd_fcu, any_of(c("CMAET60","CMAST60","CMATT60","CMACT60",
+                             "CMAET060","CMAST060","CMATT060","CMACT060"))) %>%
+    rename_with(~ gsub("0$", "", .x), ends_with("060")),
+  error = function(e) { message("AOP file not found — skipping."); NULL }
 )
+
+fav_df <- fav_df %>%
+  left_join(riscos %>% select(cd_fcu, tem_risco), by = "cd_fcu")
+
 if (!is.null(aop)) {
   fav_df <- fav_df %>% left_join(aop, by = "cd_fcu")
 } else {
-  fav_df$CMAET60 <- NA_real_
-  fav_df$CMAST60 <- NA_real_
-  fav_df$CMATT60 <- NA_real_
-  fav_df$CMACT60 <- NA_real_
+  fav_df$CMAET60 <- NA_real_; fav_df$CMAST60 <- NA_real_
+  fav_df$CMATT60 <- NA_real_; fav_df$CMACT60 <- NA_real_
 }
 
 # =========================================================================
-# CAPITAL COORDINATES — for auto-zoom when UF is selected
+# MUNICIPALITY CENTROIDS  (from uploaded spreadsheet)
+# Columns: NM_MUN, SIGLA_UF, xcoord (lng), ycoord (lat)
+# =========================================================================
+mun_centroids_raw <- read.delim(
+  textConnection(
+"NM_MUN\tSIGLA_UF\txcoord\tycoord
+Alta Floresta D'Oeste\tRO\t-62.274661\t-12.47013228
+Ariquemes\tRO\t-62.95725522\t-9.951890007
+Porto Velho\tRO\t-64.30681433\t-9.153592827
+Vilhena\tRO\t-60.24842048\t-12.09562189
+Rio Branco\tAC\t-68.37106195\t-10.06613495
+Manaus\tAM\t-60.25962801\t-2.625919383
+Boa Vista\tRR\t-60.71795309\t3.117915001
+Belém\tPA\t-48.45991077\t-1.240718656
+Ananindeua\tPA\t-48.38354433\t-1.334076858
+Santarém\tPA\t-55.23845547\t-2.679336294
+Marabá\tPA\t-50.01696035\t-5.629799735
+Macapá\tAP\t-50.69178036\t0.562753202
+Palmas\tTO\t-48.15209202\t-10.22018287
+São Luís\tMA\t-44.28090422\t-2.633690649
+Imperatriz\tMA\t-47.57523827\t-5.339771433
+Teresina\tPI\t-42.74060768\t-5.102658079
+Parnaíba\tPI\t-41.7534448\t-2.959159128
+Fortaleza\tCE\t-38.52800065\t-3.785832855
+Caucaia\tCE\t-38.80969126\t-3.783590266
+Juazeiro do Norte\tCE\t-39.28616477\t-7.1828142
+Sobral\tCE\t-40.22786986\t-3.811040804
+Natal\tRN\t-35.22884144\t-5.803174653
+Mossoró\tRN\t-37.32552954\t-5.17581018
+João Pessoa\tPB\t-34.86953143\t-7.165465402
+Campina Grande\tPB\t-35.96565887\t-7.263553431
+Recife\tPE\t-34.93308627\t-8.039344937
+Caruaru\tPE\t-36.01663484\t-8.18052296
+Olinda\tPE\t-34.86636518\t-7.993100441
+Jaboatão dos Guararapes\tPE\t-35.00334988\t-8.152158991
+Maceió\tAL\t-35.7113905\t-9.522394447
+Aracaju\tSE\t-37.09491352\t-10.99420227
+Salvador\tBA\t-38.51472192\t-12.8734914
+Feira de Santana\tBA\t-39.03398953\t-12.19307644
+Vitória da Conquista\tBA\t-40.91316377\t-15.02228444
+Belo Horizonte\tMG\t-43.95998317\t-19.90268448
+Contagem\tMG\t-44.08400013\t-19.88717723
+Juiz de Fora\tMG\t-43.46473273\t-21.74549947
+Uberlândia\tMG\t-48.33173702\t-19.02777147
+Montes Claros\tMG\t-43.92881683\t-16.62071806
+Vitória\tES\t-39.08796187\t-20.3040098
+Vila Velha\tES\t-40.37825542\t-20.43408374
+Serra\tES\t-40.30162039\t-20.12811892
+Cariacica\tES\t-40.44204913\t-20.290687
+Rio de Janeiro\tRJ\t-43.45099032\t-22.92319262
+São Gonçalo\tRJ\t-42.99700535\t-22.82561799
+Duque de Caxias\tRJ\t-43.29960647\t-22.63249169
+Nova Iguaçu\tRJ\t-43.5018375\t-22.68676081
+Belford Roxo\tRJ\t-43.37756526\t-22.72872849
+São Paulo\tSP\t-46.64809661\t-23.6500802
+Guarulhos\tSP\t-46.45487601\t-23.40269396
+Campinas\tSP\t-47.04379961\t-22.88376008
+São Bernardo do Campo\tSP\t-46.5507918\t-23.81298884
+Santo André\tSP\t-46.44158662\t-23.7279603
+Osasco\tSP\t-46.78926738\t-23.52874927
+Ribeirão Preto\tSP\t-47.82130302\t-21.21084262
+Sorocaba\tSP\t-47.44676543\t-23.46455569
+São José dos Campos\tSP\t-45.92853599\t-23.09056971
+Santos\tSP\t-46.29152919\t-23.86903498
+Mauá\tSP\t-46.44639514\t-23.66616287
+São José do Rio Preto\tSP\t-49.3581065\t-20.79723367
+Mogi das Cruzes\tSP\t-46.1860719\t-23.56957819
+Diadema\tSP\t-46.61142844\t-23.69721428
+Jundiaí\tSP\t-46.91301193\t-23.19460203
+Piracicaba\tSP\t-47.78402389\t-22.72646401
+Bauru\tSP\t-49.12613468\t-22.25399189
+Carapicuíba\tSP\t-46.84192849\t-23.55004064
+Franca\tSP\t-47.38111227\t-20.55522364
+Itaquaquecetuba\tSP\t-46.33387993\t-23.46146369
+Curitiba\tPR\t-49.28824442\t-25.47790954
+Londrina\tPR\t-51.11037658\t-23.51425196
+Maringá\tPR\t-51.9678126\t-23.40094933
+Ponta Grossa\tPR\t-50.08079333\t-25.13969857
+Cascavel\tPR\t-53.37955477\t-25.02777714
+São José dos Pinhais\tPR\t-49.0949456\t-25.66436316
+Foz do Iguaçu\tPR\t-54.48323924\t-25.46796831
+Colombo\tPR\t-49.18802662\t-25.30633595
+Guarapuava\tPR\t-51.49123908\t-25.37135466
+Paranaguá\tPR\t-48.51766216\t-25.52720821
+Florianópolis\tSC\t-48.50819805\t-27.57783391
+Joinville\tSC\t-48.95140521\t-26.24428223
+Blumenau\tSC\t-49.09730925\t-26.88576667
+São José\tSC\t-48.65625577\t-27.5784711
+Criciúma\tSC\t-49.37971559\t-28.71569532
+Itajaí\tSC\t-48.75341716\t-26.96901297
+Chapecó\tSC\t-52.6503387\t-27.12514376
+Porto Alegre\tRS\t-51.16453236\t-30.09531647
+Caxias do Sul\tRS\t-51.02367386\t-29.10219315
+Pelotas\tRS\t-52.34120067\t-31.581114
+Canoas\tRS\t-51.17964922\t-29.91222062
+Santa Maria\tRS\t-53.82503688\t-29.7849214
+Novo Hamburgo\tRS\t-51.0490435\t-29.73475152
+São Leopoldo\tRS\t-51.14485\t-29.75533029
+Viamão\tRS\t-50.86937274\t-30.16700825
+Alvorada\tRS\t-51.03742385\t-29.99498429
+Gravataí\tRS\t-50.94704648\t-29.8894729
+Campo Grande\tMS\t-54.24946376\t-20.91358432
+Dourados\tMS\t-54.83888266\t-22.14486424
+Corumbá\tMS\t-56.72225875\t-18.72235068
+Cuiabá\tMT\t-55.81823179\t-15.59279233
+Várzea Grande\tMT\t-56.24275107\t-15.5624785
+Rondonópolis\tMT\t-54.6847935\t-16.56748514
+Goiânia\tGO\t-49.27378452\t-16.64355088
+Aparecida de Goiânia\tGO\t-49.26248206\t-16.80998738
+Anápolis\tGO\t-48.97288603\t-16.29057977
+Brasília\tDF\t-47.79685087\t-15.78116622"
+  ),
+  stringsAsFactors = FALSE, sep = "\t"
+)
+
+# Normalise: keep only NM_MUN, lat, lng
+mun_centroids <- mun_centroids_raw %>%
+  transmute(nm_mun = NM_MUN, lng = xcoord, lat = ycoord)
+
+# =========================================================================
+# CAPITAL COORDINATES (for UF zoom)
 # =========================================================================
 capitais <- tibble::tribble(
   ~nm_uf,                  ~lat,     ~lng,  ~zoom,
@@ -89,7 +208,7 @@ capitais <- tibble::tribble(
 )
 
 # =========================================================================
-# INDICATOR CATALOGUE
+# INDICATOR CATALOGUE  (AOP excluded from dropdown — shown in popup only)
 # =========================================================================
 indicadores <- list(
   list(col = "IDS",       label = "IDS — Índice de Desenvolvimento Social",   dir = +1, group = "Índices"),
@@ -107,7 +226,7 @@ indicadores <- list(
   list(col = "P_CALCAD",  label = "Calçada (%)",                              dir = +1, group = "Acessibilidade Urbana"),
   list(col = "P_OBSTAC",  label = "Obstáculo na calçada (%)",                 dir = -1, group = "Acessibilidade Urbana"),
   list(col = "P_RAMPA",   label = "Rampa para cadeirante (%)",                dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "tem_risco", label = "Exposição a risco (flag)",                 dir = -1, group = "Riscos Naturais")
+  list(col = "tem_risco", label = "Exposição a risco natural (flag)",         dir = -1, group = "Riscos Naturais")
 )
 
 ind_choices <- setNames(sapply(indicadores, `[[`, "col"), sapply(indicadores, `[[`, "label"))
@@ -115,11 +234,32 @@ ind_groups  <- sapply(indicadores, `[[`, "group")
 ind_grouped <- split(ind_choices, ind_groups)
 ind_label   <- setNames(sapply(indicadores, `[[`, "label"), sapply(indicadores, `[[`, "col"))
 
+# Radar variables (used in Comparar tab)
+radar_vars <- c(
+  "IDS"       = "IDS",
+  "IDA"       = "IDA",
+  "PERC_AGUA" = "Água",
+  "PERC_ESGO" = "Esgoto",
+  "PERC_LIXO" = "Lixo",
+  "RENDA_SM"  = "Renda",
+  "P_VIAPAV"  = "Via Pav.",
+  "P_ILUM"    = "Iluminação",
+  "P_CALCAD"  = "Calçada",
+  "P_ONTON"   = "Ponto Ônibus",
+  "PERC_ANALF"= "Analfab."
+)
+
 # =========================================================================
 # GEO HIERARCHIES
 # =========================================================================
 ufs        <- sort(unique(na.omit(fav_df$nm_uf)))
 municipios <- sort(unique(na.omit(fav_df$nm_mun)))
+
+# Favela search choices: "Nome — Cidade — UF"  keyed by cd_fcu
+fav_search_choices <- fav_df %>%
+  arrange(nm_fcu, nm_mun) %>%
+  mutate(label = paste0(nm_fcu, " — ", nm_mun, " — ", nm_uf)) %>%
+  { setNames(.$cd_fcu, .$label) }
 
 # =========================================================================
 # HELPERS
@@ -140,34 +280,67 @@ filter_sf <- function(sf_obj, uf, mun) {
   sf_obj
 }
 
-# Build rich popup HTML for a single sf row
-# Uses shapefile short names (IDS, IDA, PERC_AGUA, etc.)
+aop_row_html <- function(label, val) {
+  if (is.na(val)) return("")
+  sprintf("<tr><td>%s</td><td>%s</td></tr>", label, formatC(round(val), format="d", big.mark="."))
+}
+
 make_popup <- function(sf_obj) {
   fmt_pct <- function(x) ifelse(is.na(x), "—", paste0(round(x, 1), "%"))
   fmt_num <- function(x) ifelse(is.na(x), "—", round(x, 3))
   fmt_sm  <- function(x) ifelse(is.na(x), "—", paste0(round(x, 2), " SM"))
 
-  mapply(function(nm, ids, ida,
-                  agua, esgo, lixo, banh,
-                  renda, analf,
-                  viapav, bueiro, ilum, onton, viabic, calcad, obstac, rampa,
-                  risco, pop) {
+  # Pull AOP from fav_df (not in fav_sf)
+  aop_data <- fav_df %>%
+    select(cd_fcu, CMAET60, CMAST60, CMATT60, CMACT60)
+
+  df_rows <- data.frame(
+    nm     = sf_obj$NM_FCU,
+    cd_fcu = sf_obj$CD_FCU,
+    ids    = sf_obj$IDS,    ida    = sf_obj$IDA,
+    agua   = sf_obj$PERC_AGUA, esgo = sf_obj$PERC_ESGO, lixo = sf_obj$PERC_LIXO,
+    renda  = sf_obj$RENDA_SM,  analf = sf_obj$PERC_ANALF,
+    viapav = sf_obj$P_VIAPAV, bueiro = sf_obj$P_BUEIRO, ilum = sf_obj$P_ILUM,
+    onton  = sf_obj$P_ONTON,  viabic = sf_obj$P_VIABIC, calcad = sf_obj$P_CALCAD,
+    obstac = sf_obj$P_OBSTAC, rampa  = sf_obj$P_RAMPA,
+    risco  = sf_obj$tem_risco, pop   = sf_obj$TOT_PES,
+    stringsAsFactors = FALSE
+  ) %>% left_join(aop_data, by = "cd_fcu")
+
+  apply(df_rows, 1, function(r) {
+    r_aop <- c(
+      aop_row_html("Empregos acessíveis",  suppressWarnings(as.numeric(r["CMAET60"]))),
+      aop_row_html("Escolas acessíveis",   suppressWarnings(as.numeric(r["CMAST60"]))),
+      aop_row_html("Hospitais acessíveis", suppressWarnings(as.numeric(r["CMATT60"]))),
+      aop_row_html("CRAS acessíveis",      suppressWarnings(as.numeric(r["CMACT60"])))
+    )
+    aop_block <- if (any(r_aop != "")) {
+      paste0(
+        "<tr><td colspan='2' style='padding:4px 0;'></td></tr>",
+        "<tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>",
+        "Acesso a Oportunidades <small>(60 min TP)</small></td></tr>",
+        paste(r_aop[r_aop != ""], collapse = "")
+      )
+    } else ""
+
     sprintf(
-      "<div style='font-family:sans-serif;min-width:220px;'>
+      "<div style='font-family:sans-serif;min-width:240px;'>
         <b style='font-size:1.05em;'>%s</b>
         <hr style='margin:4px 0;'>
         <table style='width:100%%;font-size:0.88em;border-collapse:collapse;'>
           <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Índices compostos</td></tr>
-          <tr><td>IDS</td><td><b>%s</b></td></tr>
-          <tr><td>IDA</td><td><b>%s</b></td></tr>
+          <tr><td>Índice de Desenvolvimento Social</td><td><b>%s</b></td></tr>
+          <tr><td>Índice de Acessibilidade Urbana</td><td><b>%s</b></td></tr>
+          <tr><td colspan='2' style='padding:4px 0;'></td></tr>
           <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Saneamento</td></tr>
           <tr><td>Água encanada</td><td>%s</td></tr>
           <tr><td>Esgoto rede geral</td><td>%s</td></tr>
           <tr><td>Coleta de lixo</td><td>%s</td></tr>
-          <tr><td>Banheiros/morador</td><td>%s</td></tr>
+          <tr><td colspan='2' style='padding:4px 0;'></td></tr>
           <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Renda e Educação</td></tr>
           <tr><td>Renda média</td><td>%s</td></tr>
           <tr><td>Analfabetismo 15+</td><td>%s</td></tr>
+          <tr><td colspan='2' style='padding:4px 0;'></td></tr>
           <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Acessibilidade Urbana</td></tr>
           <tr><td>Via pavimentada</td><td>%s</td></tr>
           <tr><td>Bueiro</td><td>%s</td></tr>
@@ -177,75 +350,70 @@ make_popup <- function(sf_obj) {
           <tr><td>Calçada</td><td>%s</td></tr>
           <tr><td>Obstáculo calçada</td><td>%s</td></tr>
           <tr><td>Rampa cadeirante</td><td>%s</td></tr>
-          <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Acesso (60 min TP)</td></tr>
-          <tr><td>Escolas públicas</td><td>%s</td></tr>
-          <tr><td>Hospitais/UPAs</td><td>%s</td></tr>
-          <tr><td>Empregos</td><td>%s</td></tr>
-          <tr><td>CRAS</td><td>%s</td></tr>
-          <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Outros</td></tr>
-          <tr><td>Risco natural</td><td>%s</td></tr>
+          %s
+          <tr><td colspan='2' style='padding:4px 0;'></td></tr>
+          <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Informações gerais</td></tr>
           <tr><td>População</td><td>%s</td></tr>
+          <tr><td>Risco natural</td><td>%s</td></tr>
         </table>
       </div>",
-      nm,
-      fmt_num(ids), fmt_num(ida),
-      fmt_pct(agua), fmt_pct(esgo), fmt_pct(lixo), fmt_num(banh),
-      fmt_sm(renda), fmt_pct(analf),
-      fmt_pct(viapav), fmt_pct(bueiro), fmt_pct(ilum), fmt_pct(onton),
-      fmt_pct(viabic), fmt_pct(calcad), fmt_pct(obstac), fmt_pct(rampa),
-      ifelse(is.na(as.numeric(aop_et)), "—", formatC(round(as.numeric(aop_et)), format="d", big.mark=".")),
-      ifelse(is.na(as.numeric(aop_st)), "—", formatC(round(as.numeric(aop_st)), format="d", big.mark=".")),
-      ifelse(is.na(as.numeric(aop_tt)), "—", formatC(round(as.numeric(aop_tt)), format="d", big.mark=".")),
-      ifelse(is.na(as.numeric(aop_ct)), "—", formatC(round(as.numeric(aop_ct)), format="d", big.mark=".")),
-      ifelse(is.na(risco), "—", ifelse(risco == 1, "Sim", "Não")),
-      formatC(pop, format = "d", big.mark = ".")
+      r["nm"],
+      fmt_num(suppressWarnings(as.numeric(r["ids"]))),
+      fmt_num(suppressWarnings(as.numeric(r["ida"]))),
+      fmt_pct(suppressWarnings(as.numeric(r["agua"]))),
+      fmt_pct(suppressWarnings(as.numeric(r["esgo"]))),
+      fmt_pct(suppressWarnings(as.numeric(r["lixo"]))),
+      fmt_sm (suppressWarnings(as.numeric(r["renda"]))),
+      fmt_pct(suppressWarnings(as.numeric(r["analf"]))),
+      fmt_pct(suppressWarnings(as.numeric(r["viapav"]))),
+      fmt_pct(suppressWarnings(as.numeric(r["bueiro"]))),
+      fmt_pct(suppressWarnings(as.numeric(r["ilum"]))),
+      fmt_pct(suppressWarnings(as.numeric(r["onton"]))),
+      fmt_pct(suppressWarnings(as.numeric(r["viabic"]))),
+      fmt_pct(suppressWarnings(as.numeric(r["calcad"]))),
+      fmt_pct(suppressWarnings(as.numeric(r["obstac"]))),
+      fmt_pct(suppressWarnings(as.numeric(r["rampa"]))),
+      aop_block,
+      formatC(suppressWarnings(as.integer(r["pop"])), format="d", big.mark="."),
+      ifelse(is.na(r["risco"]), "—", ifelse(r["risco"] == "1", "Sim", "Não"))
     )
-  },
-  nm     = sf_obj$NM_FCU,
-  ids    = sf_obj$IDS,
-  ida    = sf_obj$IDA,
-  agua   = sf_obj$PERC_AGUA,
-  esgo   = sf_obj$PERC_ESGO,
-  lixo   = sf_obj$PERC_LIXO,
-  banh   = sf_obj$I_BANH,
-  renda  = sf_obj$RENDA_SM,
-  analf  = sf_obj$PERC_ANALF,
-  viapav = sf_obj$P_VIAPAV,
-  bueiro = sf_obj$P_BUEIRO,
-  ilum   = sf_obj$P_ILUM,
-  onton  = sf_obj$P_ONTON,
-  viabic = sf_obj$P_VIABIC,
-  calcad = sf_obj$P_CALCAD,
-  obstac = sf_obj$P_OBSTAC,
-  rampa  = sf_obj$P_RAMPA,
-  risco  = sf_obj$tem_risco,
-  pop    = sf_obj$TOT_PES,
-  aop_et = fav_df$CMAET60[match(sf_obj$CD_FCU, fav_df$cd_fcu)],
-  aop_st = fav_df$CMAST60[match(sf_obj$CD_FCU, fav_df$cd_fcu)],
-  aop_tt = fav_df$CMATT60[match(sf_obj$CD_FCU, fav_df$cd_fcu)],
-  aop_ct = fav_df$CMACT60[match(sf_obj$CD_FCU, fav_df$cd_fcu)],
-  SIMPLIFY = TRUE)
+  })
 }
 
 # =========================================================================
 # UI
 # =========================================================================
 ui <- page_navbar(
-  title    = "Favelas BR — Plataforma de Análise",
+  title    = "Favela Dados",
   theme    = bs_theme(bootswatch = "flatly", base_font = font_google("Inter")),
   fillable = TRUE,
 
   sidebar = sidebar(
-    width = 260,
+    width = 270,
     title = "Filtros",
+
+    # Busca por favela
+    selectizeInput("sel_favela_search",
+      label   = "Buscar favela",
+      choices = NULL,
+      options = list(
+        placeholder  = "Digite o nome da favela...",
+        maxOptions   = 20,
+        valueField   = "value",
+        labelField   = "label",
+        searchField  = "label"
+      )
+    ),
+    hr(),
     selectInput("sel_uf",  "Estado (UF)",  choices = c("Todos" = "", ufs),       selected = "", multiple = TRUE),
     selectInput("sel_mun", "Município",    choices = c("Todos" = "", municipios), selected = "", multiple = TRUE),
     hr(),
-    selectInput("sel_ind", "Indicador",    choices = ind_grouped, selected = "IDS"),
+    selectInput("sel_ind", "Indicador (cor no mapa)", choices = ind_grouped, selected = "IDS"),
     hr(),
-    p(tags$small(tags$i("Dados: Censo IBGE 2022 · IBGE FCU 2022 · SGB")))
+    p(tags$small(tags$i("Dados: Censo IBGE 2022 · IBGE FCU 2022 · SGB · AOP IPEA 2019")))
   ),
 
+  # -----------------------------------------------------------------------
   nav_panel(
     title = tagList(icon("map"), " Mapa"),
     card(full_screen = TRUE,
@@ -254,17 +422,41 @@ ui <- page_navbar(
     )
   ),
 
+  # -----------------------------------------------------------------------
   nav_panel(
-    title = tagList(icon("chart-bar"), " Comparações"),
-    layout_columns(col_widths = c(6, 6),
-      card(card_header("Média por Estado (UF)"),        card_body(plotOutput("chart_uf",   height = "420px"))),
-      card(card_header("Média por Município (top 20)"), card_body(plotOutput("chart_mun",  height = "420px")))
+    title = tagList(icon("chart-bar"), " Descritivas"),
+    layout_columns(col_widths = c(12),
+      card(
+        card_header("Top 20 favelas — indicador selecionado"),
+        card_body(plotOutput("chart_top20", height = "480px"))
+      )
     ),
     layout_columns(col_widths = c(12),
-      card(card_header("Distribuição do indicador"), card_body(plotOutput("chart_hist", height = "280px")))
+      card(
+        card_header("Distribuição do indicador"),
+        card_body(plotOutput("chart_hist", height = "260px"))
+      )
     )
   ),
 
+  # -----------------------------------------------------------------------
+  nav_panel(
+    title = tagList(icon("spider"), " Comparar"),
+    card(
+      card_header("Comparação em radar — selecione até 5 favelas"),
+      card_body(
+        selectizeInput("sel_favelas_radar",
+          label    = "Favelas para comparar",
+          choices  = NULL,
+          multiple = TRUE,
+          options  = list(maxItems = 5, placeholder = "Digite o nome da favela...")
+        ),
+        plotOutput("chart_radar", height = "500px")
+      )
+    )
+  ),
+
+  # -----------------------------------------------------------------------
   nav_panel(
     title = tagList(icon("table"), " Dados"),
     card(
@@ -274,6 +466,51 @@ ui <- page_navbar(
       )),
       card_body(DTOutput("tabela_dados"))
     )
+  ),
+
+  # -----------------------------------------------------------------------
+  nav_panel(
+    title = tagList(icon("info-circle"), " Metadados"),
+    card(card_body(
+      tags$h4("Sobre os dados"),
+      tags$hr(),
+
+      tags$h5("Polígonos de Favelas (FCU)"),
+      tags$p("Fonte: IBGE, Censo 2022 — 12.348 Favelas e Comunidades Urbanas (FCUs) em todo o território nacional."),
+
+      tags$h5("Censo IBGE 2022 — Setores Censitários"),
+      tags$p("Dados agregados por setor censitário, vinculados aos polígonos FCU via tabela de correspondência IBGE."),
+      tags$ul(
+        tags$li(tags$b("Saneamento:"), " % de domicílios com água encanada, esgoto em rede geral e coleta de lixo."),
+        tags$li(tags$b("Renda:"), " renda média do responsável em salários mínimos (SM = R$ 1.212, ref. 2022)."),
+        tags$li(tags$b("Educação:"), " % da população de 15+ anos analfabeta."),
+        tags$li(tags$b("Entorno:"), " % de faces de quadra com via pavimentada, bueiro, iluminação, ponto de ônibus, ciclovia, calçada, obstáculo e rampa para cadeirante.")
+      ),
+
+      tags$h5("Índices Compostos"),
+      tags$ul(
+        tags$li(tags$b("IDS — Índice de Desenvolvimento Social:"), " média de 6 componentes min-max normalizados: água, esgoto, lixo, banheiros por morador, alfabetização e renda."),
+        tags$li(tags$b("IDA — Índice de Acessibilidade Urbana:"), " média de 8 componentes normalizados: via pavimentada, bueiro, iluminação, ponto de ônibus, ciclovia, calçada, obstáculo (invertido) e rampa.")
+      ),
+
+      tags$h5("Riscos Naturais — SGB/CPRM"),
+      tags$p("Variável binária: 1 se o polígono FCU intersecta área de risco geológico mapeada pelo Serviço Geológico Brasileiro."),
+
+      tags$h5("Acesso a Oportunidades — AOP (aopdata / IPEA, 2019)"),
+      tags$p("Dados disponíveis para 20 municípios com maior população. Favelas em outros municípios exibem NA nessas variáveis."),
+      tags$p("Municípios cobertos:"),
+      tags$p(tags$em("Belém, Belo Horizonte, Brasília, Campinas, Campo Grande, Curitiba, Duque de Caxias, Fortaleza, Goiânia, Guarulhos, Maceió, Manaus, Natal, Porto Alegre, Recife, Rio de Janeiro, Salvador, São Gonçalo, São Luís, São Paulo.")),
+      tags$ul(
+        tags$li(tags$b("CMATT60:"), " empregos formais acessíveis em ≤ 60 min de transporte público (pico manhã)."),
+        tags$li(tags$b("CMAST60:"), " escolas públicas acessíveis em ≤ 60 min por TP."),
+        tags$li(tags$b("CMAET60:"), " hospitais/UPAs acessíveis em ≤ 60 min por TP."),
+        tags$li(tags$b("CMACT60:"), " CRAS acessíveis em ≤ 60 min por TP.")
+      ),
+      tags$p("As variáveis AOP aparecem no popup ao clicar em uma favela, somente quando disponíveis. Elas não estão disponíveis no mapa de cores nem nas Descritivas por cobertura parcial."),
+
+      tags$h5("Nota metodológica"),
+      tags$p("Indicadores de setor censitário foram agregados ao nível FCU por média ponderada pela população. Normalização min-max calculada sobre setores urbanos de municípios com pelo menos uma favela.")
+    ))
   )
 )
 
@@ -282,7 +519,14 @@ ui <- page_navbar(
 # =========================================================================
 server <- function(input, output, session) {
 
-  # Update municipality choices when UF changes
+  # Populate favela search with server-side selectize
+  updateSelectizeInput(session, "sel_favela_search",
+    choices  = fav_search_choices,
+    selected = NULL,
+    server   = TRUE
+  )
+
+  # Update municipalities when UF changes
   observeEvent(input$sel_uf, {
     muns_filtrados <- if (length(input$sel_uf) > 0 && !all(input$sel_uf == "")) {
       fav_df %>% filter(nm_uf %in% input$sel_uf) %>% pull(nm_mun) %>% unique() %>% sort()
@@ -293,28 +537,42 @@ server <- function(input, output, session) {
     )
   })
 
+  # Populate radar favela picker (server-side, scoped to current filter)
+  observe({
+    df <- dados_filtrados()
+    choices <- setNames(df$cd_fcu, paste0(df$nm_fcu, " — ", df$nm_mun, " — ", df$nm_uf))
+    updateSelectizeInput(session, "sel_favelas_radar",
+      choices  = choices,
+      selected = NULL,
+      server   = TRUE
+    )
+  })
+
   dados_filtrados <- reactive({ filter_data(fav_df, input$sel_uf, input$sel_mun) })
   sf_filtrado     <- reactive({ filter_sf(fav_sf,  input$sel_uf, input$sel_mun) })
   ind_col         <- reactive({ input$sel_ind })
   ind_nome        <- reactive({ ind_label[[input$sel_ind]] })
 
   # -----------------------------------------------------------------------
-  # Tab 1 — Mapa
+  # Tab: Mapa
   # -----------------------------------------------------------------------
   output$mapa_titulo <- renderText({
     if (length(input$sel_uf) == 0 || all(input$sel_uf == ""))
-      "Mapa — selecione um Estado para visualizar"
+      "Mapa — selecione um Estado ou busque uma favela"
     else
       paste0("Mapa — ", ind_nome(), " | ", nrow(dados_filtrados()), " favelas")
   })
 
   output$mapa_ui <- renderUI({
-    if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
+    search_active <- length(input$sel_favela_search) > 0 && input$sel_favela_search != ""
+    uf_active     <- length(input$sel_uf) > 0 && !all(input$sel_uf == "")
+
+    if (!search_active && !uf_active) {
       div(
         style = "height:680px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8f9fa;border-radius:6px;color:#6c757d;",
         tags$i(class = "fa fa-map fa-3x", style = "margin-bottom:16px;color:#adb5bd;"),
-        tags$h5("Selecione um Estado para carregar o mapa", style = "font-weight:500;margin-bottom:8px;"),
-        tags$p("Use o filtro 'Estado (UF)' na barra lateral.", style = "font-size:0.9rem;")
+        tags$h5("Selecione um Estado ou busque uma favela", style = "font-weight:500;margin-bottom:8px;"),
+        tags$p("Use os filtros na barra lateral.", style = "font-size:0.9rem;")
       )
     } else {
       leafletOutput("mapa", width = "100%", height = "680px")
@@ -322,41 +580,45 @@ server <- function(input, output, session) {
   })
 
   output$mapa <- renderLeaflet({
-    req(length(input$sel_uf) > 0, !all(input$sel_uf == ""))
+    search_active <- length(input$sel_favela_search) > 0 && input$sel_favela_search != ""
+    uf_active     <- length(input$sel_uf) > 0 && !all(input$sel_uf == "")
+    req(search_active || uf_active)
+
     sf_obj <- sf_filtrado()
     col    <- ind_col()
+    nome   <- ind_nome()
     vals   <- sf_obj[[col]]
     pal    <- colorNumeric(viridis(100), domain = vals, na.color = "#CCCCCC")
-    popups <- make_popup(sf_obj)
+    popups <- unname(make_popup(sf_obj))
 
-    # Determine centre: use first selected UF's capital
-    uf_sel  <- input$sel_uf[1]
-    cap     <- capitais %>% filter(nm_uf == uf_sel)
-    map_lat  <- if (nrow(cap) > 0) cap$lat[1]  else -15
-    map_lng  <- if (nrow(cap) > 0) cap$lng[1]  else -50
-    map_zoom <- if (nrow(cap) > 0) cap$zoom[1] else  5
+    # Default view: capital of first selected UF
+    uf_sel   <- if (uf_active) input$sel_uf[1] else NULL
+    cap      <- if (!is.null(uf_sel)) capitais %>% filter(nm_uf == uf_sel) else NULL
+    map_lat  <- if (!is.null(cap) && nrow(cap) > 0) cap$lat[1]  else -15
+    map_lng  <- if (!is.null(cap) && nrow(cap) > 0) cap$lng[1]  else -50
+    map_zoom <- if (!is.null(cap) && nrow(cap) > 0) cap$zoom[1] else  5
 
     leaflet(sf_obj) %>%
       setView(lng = map_lng, lat = map_lat, zoom = map_zoom) %>%
       addProviderTiles("CartoDB.Positron") %>%
       addPolygons(
-        fillColor    = ~pal(vals),
-        fillOpacity  = 0.8,
-        weight       = 0.8,
-        color        = "white",
-        popup        = popups,
-        label        = ~paste0(NM_FCU, " — ", ind_nome(), ": ",
-                               ifelse(is.na(vals), "—", round(vals, 3))),
+        fillColor   = ~pal(vals),
+        fillOpacity = 0.8,
+        weight      = 0.8,
+        color       = "white",
+        popup       = popups,
+        label       = ~NM_FCU,
+        layerId     = ~CD_FCU,
         highlightOptions = highlightOptions(
           weight = 2, color = "#FFD700",
           fillOpacity = 0.95, bringToFront = TRUE
         )
       ) %>%
-      addLegend(pal = pal, values = vals, title = ind_nome(),
+      addLegend(pal = pal, values = vals, title = nome,
                 opacity = 0.9, position = "bottomright")
   })
 
-  # Auto-zoom when UF selection changes (map already rendered)
+  # Auto-zoom on UF change
   observeEvent(input$sel_uf, {
     req(length(input$sel_uf) > 0, !all(input$sel_uf == ""))
     uf_sel <- input$sel_uf[1]
@@ -367,45 +629,74 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = TRUE)
 
+  # Auto-zoom on municipality change
+  observeEvent(input$sel_mun, {
+    req(length(input$sel_mun) > 0, !all(input$sel_mun == ""))
+    mun_sel <- input$sel_mun[1]
+    centro  <- mun_centroids %>% filter(nm_mun == mun_sel)
+    if (nrow(centro) > 0) {
+      leafletProxy("mapa") %>%
+        setView(lng = centro$lng[1], lat = centro$lat[1], zoom = 12)
+    }
+  }, ignoreInit = TRUE)
+
+  # Zoom to individual favela when search is used
+  observeEvent(input$sel_favela_search, {
+    req(input$sel_favela_search != "")
+    cd <- input$sel_favela_search
+    row <- fav_df %>% filter(cd_fcu == cd) %>% slice(1)
+    if (nrow(row) == 0) return()
+
+    # Get centroid from fav_sf
+    fav_row <- fav_sf %>% filter(CD_FCU == cd)
+    if (nrow(fav_row) == 0) return()
+
+    ctr <- suppressWarnings(st_centroid(st_geometry(fav_row)))
+    coords <- st_coordinates(ctr)
+    if (nrow(coords) == 0) return()
+
+    lng_f <- coords[1, 1]; lat_f <- coords[1, 2]
+
+    # Load map for this UF if not already loaded
+    uf_of_fav <- row$nm_uf[1]
+    current_uf <- input$sel_uf
+
+    if (is.null(current_uf) || !uf_of_fav %in% current_uf) {
+      # Update UF filter to reveal the map
+      updateSelectInput(session, "sel_uf", selected = uf_of_fav)
+    }
+
+    # Zoom after a brief delay to let the map render
+    session$sendCustomMessage("zoom_to_favela", list(lng = lng_f, lat = lat_f, zoom = 16))
+  }, ignoreInit = TRUE)
+
   # -----------------------------------------------------------------------
-  # Tab 2 — Comparações
+  # Tab: Descritivas
   # -----------------------------------------------------------------------
   chart_theme <- theme_minimal(base_size = 12) +
     theme(panel.grid.major.y = element_blank(),
           axis.text.x = element_text(size = 9),
           plot.title  = element_blank())
 
-  output$chart_uf <- renderPlot({
-    col <- ind_col(); df <- dados_filtrados()
+  output$chart_top20 <- renderPlot({
+    col <- ind_col(); nome <- ind_nome(); df <- dados_filtrados()
     if (!col %in% names(df)) return(NULL)
-    df %>% group_by(UF = nm_uf) %>%
-      summarise(media = mean(.data[[col]], na.rm = TRUE), n = n(), .groups = "drop") %>%
-      filter(!is.na(UF)) %>% mutate(UF = fct_reorder(UF, media)) %>%
-      ggplot(aes(x = media, y = UF, fill = media)) +
+    df %>%
+      filter(!is.na(.data[[col]])) %>%
+      slice_max(order_by = .data[[col]], n = 20) %>%
+      mutate(label = paste0(nm_fcu, " (", nm_mun, ")"),
+             label = fct_reorder(label, .data[[col]])) %>%
+      ggplot(aes(x = .data[[col]], y = label, fill = .data[[col]])) +
       geom_col(show.legend = FALSE) +
-      geom_text(aes(label = round(media, 2)), hjust = -0.15, size = 3.2) +
-      scale_fill_viridis_c(option = "D") +
-      scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
-      labs(x = ind_nome(), y = NULL) + chart_theme
-  })
-
-  output$chart_mun <- renderPlot({
-    col <- ind_col(); df <- dados_filtrados()
-    if (!col %in% names(df)) return(NULL)
-    df %>% group_by(Município = nm_mun) %>%
-      summarise(media = mean(.data[[col]], na.rm = TRUE), n = n(), .groups = "drop") %>%
-      filter(!is.na(Município)) %>% slice_max(order_by = n, n = 20) %>%
-      mutate(Município = fct_reorder(Município, media)) %>%
-      ggplot(aes(x = media, y = Município, fill = media)) +
-      geom_col(show.legend = FALSE) +
-      geom_text(aes(label = round(media, 2)), hjust = -0.15, size = 3) +
+      geom_text(aes(label = round(.data[[col]], 2)), hjust = -0.15, size = 3) +
       scale_fill_viridis_c(option = "D") +
       scale_x_continuous(expand = expansion(mult = c(0, 0.18))) +
-      labs(x = ind_nome(), y = NULL) + chart_theme
+      labs(x = nome, y = NULL, caption = "Top 20 favelas na seleção atual") +
+      chart_theme
   })
 
   output$chart_hist <- renderPlot({
-    col <- ind_col(); df <- dados_filtrados()
+    col <- ind_col(); nome <- ind_nome(); df <- dados_filtrados()
     if (!col %in% names(df)) return(NULL)
     med <- median(df[[col]], na.rm = TRUE)
     ggplot(df, aes(x = .data[[col]])) +
@@ -414,11 +705,111 @@ server <- function(input, output, session) {
       annotate("text", x = med, y = Inf, vjust = 2, hjust = -0.1,
                label = paste0("Mediana: ", round(med, 2)),
                colour = "tomato", size = 3.5) +
-      labs(x = ind_nome(), y = "Nº de favelas") + theme_minimal(base_size = 12)
+      labs(x = nome, y = "Nº de favelas") + theme_minimal(base_size = 12)
   })
 
   # -----------------------------------------------------------------------
-  # Tab 3 — Dados
+  # Tab: Comparar — Radar chart
+  # -----------------------------------------------------------------------
+  output$chart_radar <- renderPlot({
+    req(length(input$sel_favelas_radar) >= 2)
+
+    sel <- input$sel_favelas_radar
+    vnames <- names(radar_vars)
+    vlabels <- unname(radar_vars)
+    n_vars <- length(vnames)
+
+    # Pull data and normalise 0-1 globally
+    df_sel <- fav_df %>%
+      filter(cd_fcu %in% sel) %>%
+      select(cd_fcu, nm_fcu, nm_mun, nm_uf, all_of(vnames)) %>%
+      mutate(favela = paste0(nm_fcu, "\n(", nm_mun, ", ", nm_uf, ")"))
+
+    for (v in vnames) {
+      mn <- min(fav_df[[v]], na.rm = TRUE)
+      mx <- max(fav_df[[v]], na.rm = TRUE)
+      df_sel[[v]] <- if (mx > mn) (df_sel[[v]] - mn) / (mx - mn) else 0.5
+      df_sel[[v]][is.na(df_sel[[v]])] <- 0
+    }
+
+    # Angles
+    angles <- seq(0, 2 * pi, length.out = n_vars + 1)[1:n_vars]
+
+    # Build polygon coordinates
+    polys <- do.call(rbind, lapply(seq_len(nrow(df_sel)), function(i) {
+      vals <- as.numeric(df_sel[i, vnames])
+      # close the polygon
+      vals_c <- c(vals, vals[1])
+      ang_c  <- c(angles, angles[1])
+      data.frame(
+        x      = vals_c * cos(ang_c),
+        y      = vals_c * sin(ang_c),
+        favela = df_sel$favela[i],
+        stringsAsFactors = FALSE
+      )
+    }))
+
+    # Axis label positions (slightly outside)
+    label_df <- data.frame(
+      x = 1.18 * cos(angles),
+      y = 1.18 * sin(angles),
+      label = vlabels,
+      stringsAsFactors = FALSE
+    )
+
+    # Grid circles
+    grid_df <- do.call(rbind, lapply(c(0.25, 0.5, 0.75, 1.0), function(r) {
+      th <- seq(0, 2 * pi, length.out = 200)
+      data.frame(x = r * cos(th), y = r * sin(th), r = r)
+    }))
+
+    # Spoke lines
+    spoke_df <- data.frame(
+      x    = cos(angles),
+      y    = sin(angles),
+      xend = 0, yend = 0
+    )
+
+    pal_colors <- scales::hue_pal()(nrow(df_sel))
+
+    ggplot() +
+      # Grid circles
+      geom_path(data = grid_df, aes(x = x, y = y, group = r),
+                colour = "grey80", linewidth = 0.3) +
+      # Spokes
+      geom_segment(data = spoke_df,
+                   aes(x = x, y = y, xend = xend, yend = yend),
+                   colour = "grey70", linewidth = 0.4) +
+      # Favela polygons
+      geom_polygon(data = polys,
+                   aes(x = x, y = y, colour = favela, fill = favela, group = favela),
+                   alpha = 0.18, linewidth = 0.9) +
+      geom_point(data = polys %>% group_by(favela) %>% slice(-n()),
+                 aes(x = x, y = y, colour = favela),
+                 size = 2) +
+      # Axis labels
+      geom_text(data = label_df, aes(x = x, y = y, label = label),
+                size = 3.2, colour = "grey25", fontface = "bold",
+                lineheight = 0.85) +
+      # Grid value labels (0.5 / 1.0)
+      annotate("text", x = 0.5 * cos(angles[1]), y = 0.5 * sin(angles[1]) - 0.06,
+               label = "0.5", size = 2.6, colour = "grey60") +
+      annotate("text", x = 1.0 * cos(angles[1]), y = 1.0 * sin(angles[1]) - 0.06,
+               label = "1.0", size = 2.6, colour = "grey60") +
+      coord_fixed(xlim = c(-1.35, 1.35), ylim = c(-1.35, 1.35)) +
+      scale_colour_manual(values = pal_colors) +
+      scale_fill_manual(values = pal_colors) +
+      labs(colour = NULL, fill = NULL,
+           caption = "Valores normalizados 0–1 em relação ao universo nacional de favelas") +
+      theme_void(base_size = 12) +
+      theme(legend.position = "bottom",
+            legend.text     = element_text(size = 9),
+            plot.caption    = element_text(size = 8, colour = "grey50", hjust = 0.5),
+            plot.margin     = margin(10, 10, 10, 10))
+  })
+
+  # -----------------------------------------------------------------------
+  # Tab: Dados
   # -----------------------------------------------------------------------
   output$dados_titulo <- renderText({
     paste0(nrow(dados_filtrados()), " favelas selecionadas")
@@ -428,41 +819,40 @@ server <- function(input, output, session) {
     dados_filtrados() %>%
       select(cd_fcu, nm_fcu, nm_mun, nm_uf, total_pessoas, total_dp_ocupados,
              perc_agua_adequada, perc_esgoto_adequado, perc_lixo_coleta,
-             renda_sm_pond, perc_analfabeto_populacao, num_medio_banheiros_por_morador,
+             renda_sm_pond, perc_analfabeto_populacao,
              perc_via_pavimentada, perc_bueiro, perc_iluminacao_publica,
              perc_ponto_onibus, perc_via_bicicleta, perc_calcada,
-             perc_obstaculo_calcada, perc_rampa_cadeirante, IDS, IDA,
-             any_of("tem_risco")) %>%
+             perc_obstaculo_calcada, perc_rampa_cadeirante,
+             IDS, IDA, any_of(c("CMAET60","CMAST60","CMATT60","CMACT60","tem_risco"))) %>%
       rename(
-        "Código FCU"            = cd_fcu,
-        "Nome da favela"        = nm_fcu,
-        "Município"             = nm_mun,
-        "UF"                    = nm_uf,
-        "População"             = total_pessoas,
-        "Domicílios ocupados"   = total_dp_ocupados,
-        "Água encanada (%)"     = perc_agua_adequada,
-        "Esgoto rede geral (%)" = perc_esgoto_adequado,
-        "Coleta de lixo (%)"    = perc_lixo_coleta,
-        "Renda média (SM)"      = renda_sm_pond,
-        "Analfabetismo 15+ (%)" = perc_analfabeto_populacao,
-        "Banheiros/morador"     = num_medio_banheiros_por_morador,
-        "Via pavimentada (%)"   = perc_via_pavimentada,
-        "Bueiro (%)"            = perc_bueiro,
-        "Iluminação pública (%)"= perc_iluminacao_publica,
-        "Ponto de ônibus (%)"   = perc_ponto_onibus,
-        "Ciclovia (%)"          = perc_via_bicicleta,
-        "Calçada (%)"           = perc_calcada,
-        "Obstáculo calçada (%)" = perc_obstaculo_calcada,
-        "Rampa cadeirante (%)"  = perc_rampa_cadeirante,
-        "IDS"                   = IDS,
-        "IDA"                   = IDA
+        "Código FCU"             = cd_fcu,
+        "Nome da favela"         = nm_fcu,
+        "Município"              = nm_mun,
+        "UF"                     = nm_uf,
+        "População"              = total_pessoas,
+        "Domicílios ocupados"    = total_dp_ocupados,
+        "Água encanada (%)"      = perc_agua_adequada,
+        "Esgoto rede geral (%)"  = perc_esgoto_adequado,
+        "Coleta de lixo (%)"     = perc_lixo_coleta,
+        "Renda média (SM)"       = renda_sm_pond,
+        "Analfabetismo 15+ (%)"  = perc_analfabeto_populacao,
+        "Via pavimentada (%)"    = perc_via_pavimentada,
+        "Bueiro (%)"             = perc_bueiro,
+        "Iluminação pública (%)" = perc_iluminacao_publica,
+        "Ponto de ônibus (%)"    = perc_ponto_onibus,
+        "Ciclovia (%)"           = perc_via_bicicleta,
+        "Calçada (%)"            = perc_calcada,
+        "Obstáculo calçada (%)"  = perc_obstaculo_calcada,
+        "Rampa cadeirante (%)"   = perc_rampa_cadeirante,
+        "IDS"                    = IDS,
+        "IDA"                    = IDA
       )
   })
 
   output$tabela_dados <- renderDT({
     datatable(tabela_export(), rownames = FALSE, filter = "top",
       options = list(pageLength = 25, scrollX = TRUE, dom = "frtip")) %>%
-      formatRound(columns = c("IDS", "IDA", "Renda média (SM)", "Banheiros/morador"), digits = 3) %>%
+      formatRound(columns = c("IDS", "IDA", "Renda média (SM)"), digits = 3) %>%
       formatRound(columns = c("Água encanada (%)", "Esgoto rede geral (%)", "Coleta de lixo (%)",
                               "Analfabetismo 15+ (%)", "Via pavimentada (%)", "Bueiro (%)",
                               "Iluminação pública (%)", "Ponto de ônibus (%)", "Ciclovia (%)",
@@ -484,4 +874,17 @@ server <- function(input, output, session) {
   )
 }
 
-shinyApp(ui, server)
+# Custom JS: receive zoom_to_favela message from server
+ui_with_js <- tagList(
+  tags$head(tags$script(HTML(
+    "Shiny.addCustomMessageHandler('zoom_to_favela', function(msg) {
+      if (window.HTMLWidgets && window.HTMLWidgets.find('#mapa')) {
+        var map = window.HTMLWidgets.find('#mapa').getMap();
+        if (map) { map.setView([msg.lat, msg.lng], msg.zoom); }
+      }
+    });"
+  ))),
+  ui
+)
+
+shinyApp(ui_with_js, server)
