@@ -54,8 +54,45 @@ if (!is.null(aop)) {
 }
 
 # =========================================================================
-# MUNICIPALITY CENTROIDS  (from uploaded spreadsheet)
-# Columns: NM_MUN, SIGLA_UF, xcoord (lng), ycoord (lat)
+# COLUMN NAME MAPPING: GeoJSON short names -> fav_df long names
+# The indicator catalogue uses GeoJSON names; fav_df uses Census long names.
+# =========================================================================
+ind_col_map <- c(
+  IDS        = "IDS",
+  IDA        = "IDA",
+  PERC_AGUA  = "perc_agua_adequada",
+  PERC_ESGO  = "perc_esgoto_adequado",
+  PERC_LIXO  = "perc_lixo_coleta",
+  RENDA_SM   = "renda_sm_pond",
+  PERC_ANALF = "perc_analfabeto_populacao",
+  P_VIAPAV   = "perc_via_pavimentada",
+  P_BUEIRO   = "perc_bueiro",
+  P_ILUM     = "perc_iluminacao_publica",
+  P_ONTON    = "perc_ponto_onibus",
+  P_VIABIC   = "perc_via_bicicleta",
+  P_CALCAD   = "perc_calcada",
+  P_OBSTAC   = "perc_obstaculo_calcada",
+  P_RAMPA    = "perc_rampa_cadeirante",
+  tem_risco  = "tem_risco"
+)
+
+# Radar vars use fav_df long names directly
+radar_vars <- c(
+  "IDS"                     = "IDS",
+  "IDA"                     = "IDA",
+  "perc_agua_adequada"      = "Água",
+  "perc_esgoto_adequado"    = "Esgoto",
+  "perc_lixo_coleta"        = "Lixo",
+  "renda_sm_pond"           = "Renda",
+  "perc_via_pavimentada"    = "Via Pav.",
+  "perc_iluminacao_publica" = "Iluminação",
+  "perc_calcada"            = "Calçada",
+  "perc_ponto_onibus"       = "Ponto Ônibus",
+  "perc_analfabeto_populacao" = "Analfab."
+)
+
+# =========================================================================
+# MUNICIPALITY CENTROIDS
 # =========================================================================
 mun_centroids_raw <- read.delim(
   textConnection(
@@ -168,13 +205,11 @@ Brasília\tDF\t-47.79685087\t-15.78116622"
   ),
   stringsAsFactors = FALSE, sep = "\t"
 )
-
-# Normalise: keep only NM_MUN, lat, lng
 mun_centroids <- mun_centroids_raw %>%
   transmute(nm_mun = NM_MUN, lng = xcoord, lat = ycoord)
 
 # =========================================================================
-# CAPITAL COORDINATES (for UF zoom)
+# CAPITAL COORDINATES
 # =========================================================================
 capitais <- tibble::tribble(
   ~nm_uf,                  ~lat,     ~lng,  ~zoom,
@@ -208,7 +243,7 @@ capitais <- tibble::tribble(
 )
 
 # =========================================================================
-# INDICATOR CATALOGUE  (AOP excluded from dropdown — shown in popup only)
+# INDICATOR CATALOGUE  (AOP not in dropdown — shown in popup only)
 # =========================================================================
 indicadores <- list(
   list(col = "IDS",       label = "IDS — Índice de Desenvolvimento Social",   dir = +1, group = "Índices"),
@@ -234,30 +269,15 @@ ind_groups  <- sapply(indicadores, `[[`, "group")
 ind_grouped <- split(ind_choices, ind_groups)
 ind_label   <- setNames(sapply(indicadores, `[[`, "label"), sapply(indicadores, `[[`, "col"))
 
-# Radar variables (used in Comparar tab)
-radar_vars <- c(
-  "IDS"       = "IDS",
-  "IDA"       = "IDA",
-  "PERC_AGUA" = "Água",
-  "PERC_ESGO" = "Esgoto",
-  "PERC_LIXO" = "Lixo",
-  "RENDA_SM"  = "Renda",
-  "P_VIAPAV"  = "Via Pav.",
-  "P_ILUM"    = "Iluminação",
-  "P_CALCAD"  = "Calçada",
-  "P_ONTON"   = "Ponto Ônibus",
-  "PERC_ANALF"= "Analfab."
-)
-
 # =========================================================================
 # GEO HIERARCHIES
 # =========================================================================
 ufs        <- sort(unique(na.omit(fav_df$nm_uf)))
 municipios <- sort(unique(na.omit(fav_df$nm_mun)))
 
-# Favela search choices: "Nome — Cidade — UF"  keyed by cd_fcu
+# Favela search choices: sorted by population desc, labeled "Nome — Cidade — UF"
 fav_search_choices <- fav_df %>%
-  arrange(nm_fcu, nm_mun) %>%
+  arrange(desc(total_pessoas), nm_fcu) %>%
   mutate(label = paste0(nm_fcu, " — ", nm_mun, " — ", nm_uf)) %>%
   { setNames(.$cd_fcu, .$label) }
 
@@ -280,9 +300,15 @@ filter_sf <- function(sf_obj, uf, mun) {
   sf_obj
 }
 
+# Translate GeoJSON indicator code to fav_df column name
+to_df_col <- function(ind) {
+  if (ind %in% names(ind_col_map)) ind_col_map[[ind]] else ind
+}
+
 aop_row_html <- function(label, val) {
   if (is.na(val)) return("")
-  sprintf("<tr><td>%s</td><td>%s</td></tr>", label, formatC(round(val), format="d", big.mark="."))
+  sprintf("<tr><td>%s</td><td>%s</td></tr>",
+          label, formatC(round(val), format = "d", big.mark = "."))
 }
 
 make_popup <- function(sf_obj) {
@@ -290,9 +316,7 @@ make_popup <- function(sf_obj) {
   fmt_num <- function(x) ifelse(is.na(x), "—", round(x, 3))
   fmt_sm  <- function(x) ifelse(is.na(x), "—", paste0(round(x, 2), " SM"))
 
-  # Pull AOP from fav_df (not in fav_sf)
-  aop_data <- fav_df %>%
-    select(cd_fcu, CMAET60, CMAST60, CMATT60, CMACT60)
+  aop_data <- fav_df %>% select(cd_fcu, CMAET60, CMAST60, CMATT60, CMACT60)
 
   df_rows <- data.frame(
     nm     = sf_obj$NM_FCU,
@@ -374,7 +398,7 @@ make_popup <- function(sf_obj) {
       fmt_pct(suppressWarnings(as.numeric(r["obstac"]))),
       fmt_pct(suppressWarnings(as.numeric(r["rampa"]))),
       aop_block,
-      formatC(suppressWarnings(as.integer(r["pop"])), format="d", big.mark="."),
+      formatC(suppressWarnings(as.integer(r["pop"])), format = "d", big.mark = "."),
       ifelse(is.na(r["risco"]), "—", ifelse(r["risco"] == "1", "Sim", "Não"))
     )
   })
@@ -392,28 +416,26 @@ ui <- page_navbar(
     width = 270,
     title = "Filtros",
 
-    # Busca por favela
     selectizeInput("sel_favela_search",
       label   = "Buscar favela",
       choices = NULL,
       options = list(
-        placeholder  = "Digite o nome da favela...",
-        maxOptions   = 20,
-        valueField   = "value",
-        labelField   = "label",
-        searchField  = "label"
+        placeholder = "Digite o nome da favela...",
+        maxOptions  = 30
       )
     ),
     hr(),
-    selectInput("sel_uf",  "Estado (UF)",  choices = c("Todos" = "", ufs),       selected = "", multiple = TRUE),
-    selectInput("sel_mun", "Município",    choices = c("Todos" = "", municipios), selected = "", multiple = TRUE),
+    selectInput("sel_uf",  "Estado (UF)",
+                choices = c("Todos" = "", ufs), selected = "", multiple = TRUE),
+    selectInput("sel_mun", "Município",
+                choices = c("Todos" = "", municipios), selected = "", multiple = TRUE),
     hr(),
-    selectInput("sel_ind", "Indicador (cor no mapa)", choices = ind_grouped, selected = "IDS"),
+    selectInput("sel_ind", "Indicador (cor no mapa)",
+                choices = ind_grouped, selected = "IDS"),
     hr(),
     p(tags$small(tags$i("Dados: Censo IBGE 2022 · IBGE FCU 2022 · SGB · AOP IPEA 2019")))
   ),
 
-  # -----------------------------------------------------------------------
   nav_panel(
     title = tagList(icon("map"), " Mapa"),
     card(full_screen = TRUE,
@@ -422,12 +444,16 @@ ui <- page_navbar(
     )
   ),
 
-  # -----------------------------------------------------------------------
   nav_panel(
     title = tagList(icon("chart-bar"), " Descritivas"),
     layout_columns(col_widths = c(12),
       card(
-        card_header("Top 20 favelas — indicador selecionado"),
+        card_header(
+          layout_columns(col_widths = c(8, 4),
+            textOutput("desc_titulo"),
+            checkboxInput("show_worst", "Mostrar piores 20", value = FALSE)
+          )
+        ),
         card_body(plotOutput("chart_top20", height = "480px"))
       )
     ),
@@ -439,11 +465,10 @@ ui <- page_navbar(
     )
   ),
 
-  # -----------------------------------------------------------------------
   nav_panel(
-    title = tagList(icon("spider"), " Comparar"),
+    title = tagList(icon("circle-nodes"), " Comparar"),
     card(
-      card_header("Comparação em radar — selecione até 5 favelas"),
+      card_header("Comparação em radar — selecione 2 a 5 favelas"),
       card_body(
         selectizeInput("sel_favelas_radar",
           label    = "Favelas para comparar",
@@ -451,12 +476,11 @@ ui <- page_navbar(
           multiple = TRUE,
           options  = list(maxItems = 5, placeholder = "Digite o nome da favela...")
         ),
-        plotOutput("chart_radar", height = "500px")
+        plotOutput("chart_radar", height = "520px")
       )
     )
   ),
 
-  # -----------------------------------------------------------------------
   nav_panel(
     title = tagList(icon("table"), " Dados"),
     card(
@@ -468,16 +492,13 @@ ui <- page_navbar(
     )
   ),
 
-  # -----------------------------------------------------------------------
   nav_panel(
     title = tagList(icon("info-circle"), " Metadados"),
     card(card_body(
       tags$h4("Sobre os dados"),
       tags$hr(),
-
       tags$h5("Polígonos de Favelas (FCU)"),
       tags$p("Fonte: IBGE, Censo 2022 — 12.348 Favelas e Comunidades Urbanas (FCUs) em todo o território nacional."),
-
       tags$h5("Censo IBGE 2022 — Setores Censitários"),
       tags$p("Dados agregados por setor censitário, vinculados aos polígonos FCU via tabela de correspondência IBGE."),
       tags$ul(
@@ -486,28 +507,23 @@ ui <- page_navbar(
         tags$li(tags$b("Educação:"), " % da população de 15+ anos analfabeta."),
         tags$li(tags$b("Entorno:"), " % de faces de quadra com via pavimentada, bueiro, iluminação, ponto de ônibus, ciclovia, calçada, obstáculo e rampa para cadeirante.")
       ),
-
       tags$h5("Índices Compostos"),
       tags$ul(
-        tags$li(tags$b("IDS — Índice de Desenvolvimento Social:"), " média de 6 componentes min-max normalizados: água, esgoto, lixo, banheiros por morador, alfabetização e renda."),
-        tags$li(tags$b("IDA — Índice de Acessibilidade Urbana:"), " média de 8 componentes normalizados: via pavimentada, bueiro, iluminação, ponto de ônibus, ciclovia, calçada, obstáculo (invertido) e rampa.")
+        tags$li(tags$b("IDS:"), " média de 6 componentes min-max normalizados: água, esgoto, lixo, banheiros por morador, alfabetização e renda."),
+        tags$li(tags$b("IDA:"), " média de 8 componentes normalizados: via pavimentada, bueiro, iluminação, ponto de ônibus, ciclovia, calçada, obstáculo (invertido) e rampa.")
       ),
-
       tags$h5("Riscos Naturais — SGB/CPRM"),
       tags$p("Variável binária: 1 se o polígono FCU intersecta área de risco geológico mapeada pelo Serviço Geológico Brasileiro."),
-
       tags$h5("Acesso a Oportunidades — AOP (aopdata / IPEA, 2019)"),
-      tags$p("Dados disponíveis para 20 municípios com maior população. Favelas em outros municípios exibem NA nessas variáveis."),
-      tags$p("Municípios cobertos:"),
+      tags$p("Dados disponíveis para 20 municípios. Favelas em outros municípios exibem NA. Aparecem no popup ao clicar em uma favela."),
       tags$p(tags$em("Belém, Belo Horizonte, Brasília, Campinas, Campo Grande, Curitiba, Duque de Caxias, Fortaleza, Goiânia, Guarulhos, Maceió, Manaus, Natal, Porto Alegre, Recife, Rio de Janeiro, Salvador, São Gonçalo, São Luís, São Paulo.")),
       tags$ul(
         tags$li(tags$b("CMAET60:"), " escolas públicas acessíveis em ≤ 60 min por transporte público (todas as etapas)."),
-        tags$li(tags$b("CMAST60:"), " hospitais e UPAs acessíveis em ≤ 60 min por transporte público (todas as complexidades)."),
-        tags$li(tags$b("CMATT60:"), " empregos formais acessíveis em ≤ 60 min por transporte público (todos os níveis de escolaridade), pico da manhã."),
-        tags$li(tags$b("CMACT60:"), " CRAS acessíveis em ≤ 60 min por transporte público.")
+        tags$li(tags$b("CMAST60:"), " hospitais e UPAs acessíveis em ≤ 60 min por TP (todas as complexidades)."),
+        tags$li(tags$b("CMATT60:"), " empregos formais acessíveis em ≤ 60 min por TP (todos os níveis), pico da manhã."),
+        tags$li(tags$b("CMACT60:"), " CRAS acessíveis em ≤ 60 min por TP.")
       ),
-      tags$p("As variáveis AOP aparecem no popup ao clicar em uma favela, somente quando disponíveis. Elas não estão disponíveis no mapa de cores nem nas Descritivas por cobertura parcial."),
-
+      tags$p("Nota: para cidades com apenas transporte ativo (caminhada/bicicleta) disponível no AOP, os valores por TP podem ser NA mesmo para cidades na lista acima."),
       tags$h5("Nota metodológica"),
       tags$p("Indicadores de setor censitário foram agregados ao nível FCU por média ponderada pela população. Normalização min-max calculada sobre setores urbanos de municípios com pelo menos uma favela.")
     ))
@@ -519,10 +535,10 @@ ui <- page_navbar(
 # =========================================================================
 server <- function(input, output, session) {
 
-  # Populate favela search with server-side selectize
+  # Populate favela search (server-side, starts empty)
   updateSelectizeInput(session, "sel_favela_search",
-    choices  = fav_search_choices,
-    selected = NULL,
+    choices  = c("" = "", fav_search_choices),
+    selected = "",
     server   = TRUE
   )
 
@@ -537,12 +553,14 @@ server <- function(input, output, session) {
     )
   })
 
-  # Populate radar favela picker (server-side, scoped to current filter)
+  # Populate radar favela picker (server-side, all favelas)
   observe({
-    df <- dados_filtrados()
-    choices <- setNames(df$cd_fcu, paste0(df$nm_fcu, " — ", df$nm_mun, " — ", df$nm_uf))
+    choices_radar <- fav_df %>%
+      arrange(desc(total_pessoas), nm_fcu) %>%
+      mutate(label = paste0(nm_fcu, " — ", nm_mun, " — ", nm_uf)) %>%
+      { setNames(.$cd_fcu, .$label) }
     updateSelectizeInput(session, "sel_favelas_radar",
-      choices  = choices,
+      choices  = choices_radar,
       selected = NULL,
       server   = TRUE
     )
@@ -552,20 +570,28 @@ server <- function(input, output, session) {
   sf_filtrado     <- reactive({ filter_sf(fav_sf,  input$sel_uf, input$sel_mun) })
   ind_col         <- reactive({ input$sel_ind })
   ind_nome        <- reactive({ ind_label[[input$sel_ind]] })
+  # The fav_df column name corresponding to the selected indicator
+  ind_df_col      <- reactive({ to_df_col(input$sel_ind) })
 
   # -----------------------------------------------------------------------
   # Tab: Mapa
   # -----------------------------------------------------------------------
   output$mapa_titulo <- renderText({
-    if (length(input$sel_uf) == 0 || all(input$sel_uf == ""))
+    search_active <- !is.null(input$sel_favela_search) &&
+                     length(input$sel_favela_search) > 0 &&
+                     input$sel_favela_search != ""
+    uf_active <- length(input$sel_uf) > 0 && !all(input$sel_uf == "")
+    if (!search_active && !uf_active)
       "Mapa — selecione um Estado ou busque uma favela"
     else
       paste0("Mapa — ", ind_nome(), " | ", nrow(dados_filtrados()), " favelas")
   })
 
   output$mapa_ui <- renderUI({
-    search_active <- length(input$sel_favela_search) > 0 && input$sel_favela_search != ""
-    uf_active     <- length(input$sel_uf) > 0 && !all(input$sel_uf == "")
+    search_active <- !is.null(input$sel_favela_search) &&
+                     length(input$sel_favela_search) > 0 &&
+                     input$sel_favela_search != ""
+    uf_active <- length(input$sel_uf) > 0 && !all(input$sel_uf == "")
 
     if (!search_active && !uf_active) {
       div(
@@ -580,8 +606,10 @@ server <- function(input, output, session) {
   })
 
   output$mapa <- renderLeaflet({
-    search_active <- length(input$sel_favela_search) > 0 && input$sel_favela_search != ""
-    uf_active     <- length(input$sel_uf) > 0 && !all(input$sel_uf == "")
+    search_active <- !is.null(input$sel_favela_search) &&
+                     length(input$sel_favela_search) > 0 &&
+                     input$sel_favela_search != ""
+    uf_active <- length(input$sel_uf) > 0 && !all(input$sel_uf == "")
     req(search_active || uf_active)
 
     sf_obj <- sf_filtrado()
@@ -591,7 +619,6 @@ server <- function(input, output, session) {
     pal    <- colorNumeric(viridis(100), domain = vals, na.color = "#CCCCCC")
     popups <- unname(make_popup(sf_obj))
 
-    # Default view: capital of first selected UF
     uf_sel   <- if (uf_active) input$sel_uf[1] else NULL
     cap      <- if (!is.null(uf_sel)) capitais %>% filter(nm_uf == uf_sel) else NULL
     map_lat  <- if (!is.null(cap) && nrow(cap) > 0) cap$lat[1]  else -15
@@ -621,53 +648,45 @@ server <- function(input, output, session) {
   # Auto-zoom on UF change
   observeEvent(input$sel_uf, {
     req(length(input$sel_uf) > 0, !all(input$sel_uf == ""))
-    uf_sel <- input$sel_uf[1]
-    cap    <- capitais %>% filter(nm_uf == uf_sel)
-    if (nrow(cap) > 0) {
-      leafletProxy("mapa") %>%
-        setView(lng = cap$lng[1], lat = cap$lat[1], zoom = cap$zoom[1])
-    }
+    cap <- capitais %>% filter(nm_uf == input$sel_uf[1])
+    if (nrow(cap) > 0)
+      leafletProxy("mapa") %>% setView(lng = cap$lng[1], lat = cap$lat[1], zoom = cap$zoom[1])
   }, ignoreInit = TRUE)
 
   # Auto-zoom on municipality change
   observeEvent(input$sel_mun, {
     req(length(input$sel_mun) > 0, !all(input$sel_mun == ""))
-    mun_sel <- input$sel_mun[1]
-    centro  <- mun_centroids %>% filter(nm_mun == mun_sel)
-    if (nrow(centro) > 0) {
-      leafletProxy("mapa") %>%
-        setView(lng = centro$lng[1], lat = centro$lat[1], zoom = 12)
-    }
+    centro <- mun_centroids %>% filter(nm_mun == input$sel_mun[1])
+    if (nrow(centro) > 0)
+      leafletProxy("mapa") %>% setView(lng = centro$lng[1], lat = centro$lat[1], zoom = 12)
   }, ignoreInit = TRUE)
 
   # Zoom to individual favela when search is used
   observeEvent(input$sel_favela_search, {
-    req(input$sel_favela_search != "")
-    cd <- input$sel_favela_search
+    req(!is.null(input$sel_favela_search),
+        length(input$sel_favela_search) > 0,
+        input$sel_favela_search != "")
+
+    cd  <- input$sel_favela_search
     row <- fav_df %>% filter(cd_fcu == cd) %>% slice(1)
-    if (nrow(row) == 0) return()
+    req(nrow(row) > 0)
 
-    # Get centroid from fav_sf
-    fav_row <- fav_sf %>% filter(CD_FCU == cd)
-    if (nrow(fav_row) == 0) return()
-
-    ctr <- suppressWarnings(st_centroid(st_geometry(fav_row)))
-    coords <- st_coordinates(ctr)
-    if (nrow(coords) == 0) return()
-
-    lng_f <- coords[1, 1]; lat_f <- coords[1, 2]
-
-    # Load map for this UF if not already loaded
-    uf_of_fav <- row$nm_uf[1]
-    current_uf <- input$sel_uf
-
-    if (is.null(current_uf) || !uf_of_fav %in% current_uf) {
-      # Update UF filter to reveal the map
+    # Ensure the correct UF is loaded so the map renders
+    uf_of_fav    <- row$nm_uf[1]
+    current_ufs  <- isolate(input$sel_uf)
+    if (is.null(current_ufs) || !uf_of_fav %in% current_ufs)
       updateSelectInput(session, "sel_uf", selected = uf_of_fav)
-    }
 
-    # Zoom after a brief delay to let the map render
-    session$sendCustomMessage("zoom_to_favela", list(lng = lng_f, lat = lat_f, zoom = 16))
+    # Get favela centroid from fav_sf
+    fav_row <- fav_sf %>% filter(CD_FCU == cd)
+    req(nrow(fav_row) > 0)
+    ctr    <- suppressWarnings(st_centroid(st_geometry(fav_row)))
+    coords <- st_coordinates(ctr)
+    req(nrow(coords) > 0)
+
+    # Zoom using leafletProxy (works once map is rendered)
+    leafletProxy("mapa") %>%
+      setView(lng = coords[1, 1], lat = coords[1, 2], zoom = 16)
   }, ignoreInit = TRUE)
 
   # -----------------------------------------------------------------------
@@ -675,31 +694,53 @@ server <- function(input, output, session) {
   # -----------------------------------------------------------------------
   chart_theme <- theme_minimal(base_size = 12) +
     theme(panel.grid.major.y = element_blank(),
-          axis.text.x = element_text(size = 9),
-          plot.title  = element_blank())
+          axis.text.x = element_text(size = 9))
+
+  output$desc_titulo <- renderText({
+    if (isTRUE(input$show_worst))
+      paste0("Piores 20 — ", ind_nome())
+    else
+      paste0("Top 20 — ", ind_nome())
+  })
 
   output$chart_top20 <- renderPlot({
-    col <- ind_col(); nome <- ind_nome(); df <- dados_filtrados()
-    if (!col %in% names(df)) return(NULL)
-    df %>%
-      filter(!is.na(.data[[col]])) %>%
-      slice_max(order_by = .data[[col]], n = 20) %>%
+    df_col <- ind_df_col()
+    nome   <- ind_nome()
+    df     <- dados_filtrados()
+
+    # Validate column exists in fav_df
+    if (!df_col %in% names(df)) {
+      plot.new(); title(paste("Coluna não encontrada:", df_col)); return(NULL)
+    }
+
+    worst <- isTRUE(input$show_worst)
+
+    df_plot <- df %>%
+      filter(!is.na(.data[[df_col]])) %>%
+      { if (worst) slice_min(., order_by = .data[[df_col]], n = 20)
+        else        slice_max(., order_by = .data[[df_col]], n = 20) } %>%
       mutate(label = paste0(nm_fcu, " (", nm_mun, ")"),
-             label = fct_reorder(label, .data[[col]])) %>%
-      ggplot(aes(x = .data[[col]], y = label, fill = .data[[col]])) +
+             label = fct_reorder(label, .data[[df_col]]))
+
+    ggplot(df_plot, aes(x = .data[[df_col]], y = label, fill = .data[[df_col]])) +
       geom_col(show.legend = FALSE) +
-      geom_text(aes(label = round(.data[[col]], 2)), hjust = -0.15, size = 3) +
-      scale_fill_viridis_c(option = "D") +
+      geom_text(aes(label = round(.data[[df_col]], 2)), hjust = -0.15, size = 3) +
+      scale_fill_viridis_c(option = if (worst) "B" else "D",
+                           direction = if (worst) -1 else 1) +
       scale_x_continuous(expand = expansion(mult = c(0, 0.18))) +
-      labs(x = nome, y = NULL, caption = "Top 20 favelas na seleção atual") +
+      labs(x = nome, y = NULL,
+           caption = if (worst) "20 favelas com menor valor na seleção atual"
+                     else       "20 favelas com maior valor na seleção atual") +
       chart_theme
   })
 
   output$chart_hist <- renderPlot({
-    col <- ind_col(); nome <- ind_nome(); df <- dados_filtrados()
-    if (!col %in% names(df)) return(NULL)
-    med <- median(df[[col]], na.rm = TRUE)
-    ggplot(df, aes(x = .data[[col]])) +
+    df_col <- ind_df_col()
+    nome   <- ind_nome()
+    df     <- dados_filtrados()
+    if (!df_col %in% names(df)) return(NULL)
+    med <- median(df[[df_col]], na.rm = TRUE)
+    ggplot(df, aes(x = .data[[df_col]])) +
       geom_histogram(bins = 40, fill = "#3B82F6", colour = "white", linewidth = 0.3) +
       geom_vline(xintercept = med, colour = "tomato", linewidth = 1, linetype = "dashed") +
       annotate("text", x = med, y = Inf, vjust = 2, hjust = -0.1,
@@ -709,22 +750,30 @@ server <- function(input, output, session) {
   })
 
   # -----------------------------------------------------------------------
-  # Tab: Comparar — Radar chart
+  # Tab: Comparar — Radar
   # -----------------------------------------------------------------------
   output$chart_radar <- renderPlot({
     req(length(input$sel_favelas_radar) >= 2)
 
-    sel <- input$sel_favelas_radar
-    vnames <- names(radar_vars)
+    sel     <- input$sel_favelas_radar
+    vnames  <- names(radar_vars)
     vlabels <- unname(radar_vars)
-    n_vars <- length(vnames)
+    n_vars  <- length(vnames)
 
-    # Pull data and normalise 0-1 globally
+    # Only keep vars that actually exist in fav_df
+    vnames  <- vnames[vnames %in% names(fav_df)]
+    vlabels <- radar_vars[vnames]
+    n_vars  <- length(vnames)
+    req(n_vars >= 3)
+
     df_sel <- fav_df %>%
       filter(cd_fcu %in% sel) %>%
       select(cd_fcu, nm_fcu, nm_mun, nm_uf, all_of(vnames)) %>%
       mutate(favela = paste0(nm_fcu, "\n(", nm_mun, ", ", nm_uf, ")"))
 
+    req(nrow(df_sel) >= 2)
+
+    # Normalise 0–1 globally
     for (v in vnames) {
       mn <- min(fav_df[[v]], na.rm = TRUE)
       mx <- max(fav_df[[v]], na.rm = TRUE)
@@ -732,80 +781,64 @@ server <- function(input, output, session) {
       df_sel[[v]][is.na(df_sel[[v]])] <- 0
     }
 
-    # Angles
     angles <- seq(0, 2 * pi, length.out = n_vars + 1)[1:n_vars]
 
-    # Build polygon coordinates
+    # Polygon coords (closed)
     polys <- do.call(rbind, lapply(seq_len(nrow(df_sel)), function(i) {
-      vals <- as.numeric(df_sel[i, vnames])
-      # close the polygon
+      vals  <- as.numeric(df_sel[i, vnames])
       vals_c <- c(vals, vals[1])
       ang_c  <- c(angles, angles[1])
-      data.frame(
-        x      = vals_c * cos(ang_c),
-        y      = vals_c * sin(ang_c),
-        favela = df_sel$favela[i],
-        stringsAsFactors = FALSE
-      )
+      data.frame(x = vals_c * cos(ang_c), y = vals_c * sin(ang_c),
+                 favela = df_sel$favela[i], stringsAsFactors = FALSE)
     }))
 
-    # Axis label positions (slightly outside)
     label_df <- data.frame(
-      x = 1.18 * cos(angles),
-      y = 1.18 * sin(angles),
-      label = vlabels,
-      stringsAsFactors = FALSE
+      x = 1.22 * cos(angles), y = 1.22 * sin(angles),
+      label = vlabels, stringsAsFactors = FALSE
     )
 
-    # Grid circles
     grid_df <- do.call(rbind, lapply(c(0.25, 0.5, 0.75, 1.0), function(r) {
       th <- seq(0, 2 * pi, length.out = 200)
-      data.frame(x = r * cos(th), y = r * sin(th), r = r)
+      data.frame(x = r * cos(th), y = r * sin(th), r = as.character(r))
     }))
 
-    # Spoke lines
     spoke_df <- data.frame(
-      x    = cos(angles),
-      y    = sin(angles),
-      xend = 0, yend = 0
+      x = cos(angles), y = sin(angles), xend = 0, yend = 0
     )
 
     pal_colors <- scales::hue_pal()(nrow(df_sel))
+    names(pal_colors) <- df_sel$favela
 
     ggplot() +
-      # Grid circles
-      geom_path(data = grid_df, aes(x = x, y = y, group = r),
-                colour = "grey80", linewidth = 0.3) +
-      # Spokes
+      geom_path(data = grid_df,
+                aes(x = x, y = y, group = r), colour = "grey82", linewidth = 0.3) +
       geom_segment(data = spoke_df,
                    aes(x = x, y = y, xend = xend, yend = yend),
-                   colour = "grey70", linewidth = 0.4) +
-      # Favela polygons
+                   colour = "grey72", linewidth = 0.4) +
       geom_polygon(data = polys,
                    aes(x = x, y = y, colour = favela, fill = favela, group = favela),
-                   alpha = 0.18, linewidth = 0.9) +
-      geom_point(data = polys %>% group_by(favela) %>% slice(-n()),
-                 aes(x = x, y = y, colour = favela),
-                 size = 2) +
-      # Axis labels
-      geom_text(data = label_df, aes(x = x, y = y, label = label),
-                size = 3.2, colour = "grey25", fontface = "bold",
-                lineheight = 0.85) +
-      # Grid value labels (0.5 / 1.0)
-      annotate("text", x = 0.5 * cos(angles[1]), y = 0.5 * sin(angles[1]) - 0.06,
+                   alpha = 0.15, linewidth = 0.9) +
+      geom_point(data = polys %>% group_by(favela) %>% filter(row_number() < n()),
+                 aes(x = x, y = y, colour = favela), size = 2.5) +
+      geom_text(data = label_df,
+                aes(x = x, y = y, label = label),
+                size = 3.2, colour = "grey20", fontface = "bold", lineheight = 0.85) +
+      annotate("text",
+               x = 0.5 * cos(angles[1]) + 0.03, y = 0.5 * sin(angles[1]) - 0.05,
                label = "0.5", size = 2.6, colour = "grey60") +
-      annotate("text", x = 1.0 * cos(angles[1]), y = 1.0 * sin(angles[1]) - 0.06,
+      annotate("text",
+               x = 1.0 * cos(angles[1]) + 0.03, y = 1.0 * sin(angles[1]) - 0.05,
                label = "1.0", size = 2.6, colour = "grey60") +
-      coord_fixed(xlim = c(-1.35, 1.35), ylim = c(-1.35, 1.35)) +
+      coord_fixed(xlim = c(-1.4, 1.4), ylim = c(-1.4, 1.4)) +
       scale_colour_manual(values = pal_colors) +
       scale_fill_manual(values = pal_colors) +
       labs(colour = NULL, fill = NULL,
            caption = "Valores normalizados 0–1 em relação ao universo nacional de favelas") +
       theme_void(base_size = 12) +
-      theme(legend.position = "bottom",
-            legend.text     = element_text(size = 9),
-            plot.caption    = element_text(size = 8, colour = "grey50", hjust = 0.5),
-            plot.margin     = margin(10, 10, 10, 10))
+      theme(legend.position  = "bottom",
+            legend.text      = element_text(size = 9),
+            plot.caption     = element_text(size = 8, colour = "grey50", hjust = 0.5),
+            plot.margin      = margin(12, 12, 12, 12))
   })
 
   # -----------------------------------------------------------------------
@@ -823,7 +856,8 @@ server <- function(input, output, session) {
              perc_via_pavimentada, perc_bueiro, perc_iluminacao_publica,
              perc_ponto_onibus, perc_via_bicicleta, perc_calcada,
              perc_obstaculo_calcada, perc_rampa_cadeirante,
-             IDS, IDA, any_of(c("CMAET60","CMAST60","CMATT60","CMACT60","tem_risco"))) %>%
+             IDS, IDA,
+             any_of(c("CMAET60","CMAST60","CMATT60","CMACT60","tem_risco"))) %>%
       rename(
         "Código FCU"             = cd_fcu,
         "Nome da favela"         = nm_fcu,
@@ -874,17 +908,4 @@ server <- function(input, output, session) {
   )
 }
 
-# Custom JS: receive zoom_to_favela message from server
-ui_with_js <- tagList(
-  tags$head(tags$script(HTML(
-    "Shiny.addCustomMessageHandler('zoom_to_favela', function(msg) {
-      if (window.HTMLWidgets && window.HTMLWidgets.find('#mapa')) {
-        var map = window.HTMLWidgets.find('#mapa').getMap();
-        if (map) { map.setView([msg.lat, msg.lng], msg.zoom); }
-      }
-    });"
-  ))),
-  ui
-)
-
-shinyApp(ui_with_js, server)
+shinyApp(ui, server)
