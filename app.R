@@ -329,7 +329,7 @@ make_popup <- function(sf_obj) {
       )
     } else ""
 
-sprintf(
+  sprintf(
      "<div style='font-family:sans-serif;min-width:500px;'>
         <b style='font-size:1.05em;'>%s</b>
         <hr style='margin:4px 0;'>
@@ -379,7 +379,7 @@ sprintf(
       fmt_sm (suppressWarnings(as.numeric(r["renda"]))),
       fmt_pct(suppressWarnings(as.numeric(r["analf"]))),
       formatC(suppressWarnings(as.integer(r["pop"])), format="d", big.mark="."),
-      ifelse(is.na(r["risco"]), "—", ifelse(r["risco"] == "1", "Sim", "Nao")),
+      ifelse(is.na(r["risco"]), "—", ifelse(r["risco"] == "1", "Sim", "Não")),
       fmt_pct(suppressWarnings(as.numeric(r["viapav"]))),
       fmt_pct(suppressWarnings(as.numeric(r["bueiro"]))),
       fmt_pct(suppressWarnings(as.numeric(r["ilum"]))),
@@ -389,8 +389,6 @@ sprintf(
       fmt_pct(suppressWarnings(as.numeric(r["obstac"]))),
       fmt_pct(suppressWarnings(as.numeric(r["rampa"]))),
       aop_block
-      formatC(suppressWarnings(as.integer(r["pop"])), format="d", big.mark="."),
-      ifelse(is.na(r["risco"]), "—", ifelse(r["risco"] == "1", "Sim", "Não"))
     )
   })
 }
