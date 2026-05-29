@@ -379,18 +379,7 @@ ui <- page_navbar(
     width = 270,
     title = "Filtros",
 
-selectizeInput("sel_favela_search",
-      label   = "Buscar favela",
-      choices = NULL,
-      options = list(
-        placeholder = "Digite o nome da favela...",
-        maxOptions  = 30
-      )
-    ),
-    hr(),
-    selectInput("sel_uf",  "Estado (UF)",  choices = c("Todos" = "", ufs),       selected = "", multiple = TRUE),
-    hr(),
-    selectInput("sel_ind", "Indicador (cor no mapa)", choices = ind_grouped, selected = "IDS"),
+selectInput("sel_uf", "Estado (UF)", choices = c("Todos" = "", ufs), selected = "", multiple = TRUE),
     hr(),
     p(tags$small(tags$i("Dados: Censo IBGE 2022 · IBGE FCU 2022 · SGB · AOP IPEA 2019")))
   ),
@@ -522,10 +511,9 @@ if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
   })
 
   output$mapa_ui <- renderUI({
-    search_active <- length(input$sel_favela_search) > 0 && input$sel_favela_search != ""
-    uf_active     <- length(input$sel_uf) > 0 && !all(input$sel_uf == "")
+ uf_active <- length(input$sel_uf) > 0 && !all(input$sel_uf == "")
 
-    if (!search_active && !uf_active) {
+    if (!uf_active) {
       div(
         style = "height:680px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8f9fa;border-radius:6px;color:#6c757d;",
         tags$i(class = "fa fa-map fa-3x", style = "margin-bottom:16px;color:#adb5bd;"),
@@ -538,9 +526,8 @@ if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
   })
 
   output$mapa <- renderLeaflet({
-    search_active <- length(input$sel_favela_search) > 0 && input$sel_favela_search != ""
-    uf_active     <- length(input$sel_uf) > 0 && !all(input$sel_uf == "")
-    req(search_active || uf_active)
+    uf_active <- length(input$sel_uf) > 0 && !all(input$sel_uf == "")
+    req(uf_active)
 
     sf_obj <- sf_filtrado()
     col    <- "IDS"
@@ -641,20 +628,22 @@ if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
     df_o  <- df_c[order(df_c[[col]], decreasing = !worst), ]
     df_p  <- df_o[seq_len(min(20, nrow(df_o))), ]
   
-  output$chart_top20 <- renderPlot({
-    col <- ind_col(); nome <- ind_nome(); df <- dados_filtrados()
+ output$chart_top20 <- renderPlot({
+    col   <- ind_col(); nome <- ind_nome(); df <- dados_filtrados()
     if (!col %in% names(df)) return(NULL)
-    df %>%
-      filter(!is.na(.data[[col]])) %>%
-      slice_max(order_by = .data[[col]], n = 20) %>%
-      mutate(label = paste0(nm_fcu, " (", nm_mun, ")"),
-             label = fct_reorder(label, .data[[col]])) %>%
-      ggplot(aes(x = .data[[col]], y = label, fill = .data[[col]])) +
+    worst <- isTRUE(input$show_worst)
+    df_c  <- df[!is.na(df[[col]]), ]
+    df_o  <- df_c[order(df_c[[col]], decreasing = !worst), ]
+    df_p  <- df_o[seq_len(min(20, nrow(df_o))), ]
+    df_p$lbl <- fct_reorder(paste0(df_p$nm_fcu, " (", df_p$nm_mun, ")"), df_p[[col]])
+    pal_opt <- if (worst) { "B" } else { "D" }
+    cap_txt <- if (worst) { "20 piores na seleção atual" } else { "Top 20 na seleção atual" }
+    ggplot(df_p, aes(x = .data[[col]], y = lbl, fill = .data[[col]])) +
       geom_col(show.legend = FALSE) +
       geom_text(aes(label = round(.data[[col]], 2)), hjust = -0.15, size = 3) +
-      scale_fill_viridis_c(option = "D") +
+      scale_fill_viridis_c(option = pal_opt) +
       scale_x_continuous(expand = expansion(mult = c(0, 0.18))) +
-      labs(x = nome, y = NULL, caption = "Top 20 favelas na seleção atual") +
+      labs(x = nome, y = NULL, caption = cap_txt) +
       chart_theme
   })
 
