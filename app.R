@@ -242,12 +242,12 @@ ind_label   <- setNames(sapply(indicadores, `[[`, "label"), sapply(indicadores, 
 ufs        <- sort(unique(na.omit(fav_df$nm_uf)))
 municipios <- sort(unique(na.omit(fav_df$nm_mun)))
 
-# Favela search choices: Nome - Cidade (alphabetical)
+# Favela search choices: sorted by population desc
+fav_ord <- fav_df[order(-fav_df$total_pessoas, fav_df$nm_fcu), ]
 fav_search_choices <- setNames(
-  fav_df$cd_fcu,
-  paste0(fav_df$nm_fcu, " - ", fav_df$nm_mun)
+  fav_ord$cd_fcu,
+  paste0(fav_ord$nm_fcu, " - ", fav_ord$nm_mun)
 )
-fav_search_choices <- fav_search_choices[order(names(fav_search_choices))]
 # =========================================================================
 # HELPERS
 # =========================================================================
@@ -487,8 +487,9 @@ selectizeInput("sel_favela_search",
 server <- function(input, output, session) {
   
   updateSelectizeInput(session, "sel_favela_search",
-    choices = fav_search_choices,
-    server  = TRUE
+    choices  = c("" = "", fav_search_choices),
+    selected = "",
+    server   = TRUE
   )
 
   # Update municipalities when UF changes
