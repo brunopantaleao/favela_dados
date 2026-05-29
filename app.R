@@ -485,7 +485,7 @@ selectizeInput("sel_favela_search",
 # =========================================================================
 server <- function(input, output, session) {
   
-  uupdateSelectizeInput(session, "sel_favela_search",
+  updateSelectizeInput(session, "sel_favela_search",
     choices = fav_search_choices,
     server  = TRUE
   )
