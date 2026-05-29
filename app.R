@@ -379,12 +379,10 @@ ui <- page_navbar(
     width = 270,
     title = "Filtros",
 
-    # Busca por favela
 selectizeInput("sel_favela_search",
-      label    = "Buscar favela",
-      choices  = NULL,
-      selected = character(0),
-      options  = list(
+      label   = "Buscar favela",
+      choices = NULL,
+      options = list(
         placeholder = "Digite o nome da favela...",
         maxOptions  = 30
       )
