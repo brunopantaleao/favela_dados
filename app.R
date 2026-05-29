@@ -329,39 +329,46 @@ make_popup <- function(sf_obj) {
       )
     } else ""
 
-    sprintf(
-      "<div style='font-family:sans-serif;min-width:240px;'>
+sprintf(
+     "<div style='font-family:sans-serif;min-width:500px;'>
         <b style='font-size:1.05em;'>%s</b>
         <hr style='margin:4px 0;'>
-        <table style='width:100%%;font-size:0.88em;border-collapse:collapse;'>
-          <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Índices compostos</td></tr>
-          <tr><td>Índice de Desenvolvimento Social</td><td><b>%s</b></td></tr>
-          <tr><td>Índice de Acessibilidade Urbana</td><td><b>%s</b></td></tr>
-          <tr><td colspan='2' style='padding:4px 0;'></td></tr>
-          <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Saneamento</td></tr>
-          <tr><td>Água encanada</td><td>%s</td></tr>
-          <tr><td>Esgoto rede geral</td><td>%s</td></tr>
-          <tr><td>Coleta de lixo</td><td>%s</td></tr>
-          <tr><td colspan='2' style='padding:4px 0;'></td></tr>
-          <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Renda e Educação</td></tr>
-          <tr><td>Renda média</td><td>%s</td></tr>
-          <tr><td>Analfabetismo 15+</td><td>%s</td></tr>
-          <tr><td colspan='2' style='padding:4px 0;'></td></tr>
-          <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Acessibilidade Urbana</td></tr>
-          <tr><td>Via pavimentada</td><td>%s</td></tr>
-          <tr><td>Bueiro</td><td>%s</td></tr>
-          <tr><td>Iluminação pública</td><td>%s</td></tr>
-          <tr><td>Ponto de ônibus</td><td>%s</td></tr>
-          <tr><td>Ciclovia</td><td>%s</td></tr>
-          <tr><td>Calçada</td><td>%s</td></tr>
-          <tr><td>Obstáculo calçada</td><td>%s</td></tr>
-          <tr><td>Rampa cadeirante</td><td>%s</td></tr>
-          %s
-          <tr><td colspan='2' style='padding:4px 0;'></td></tr>
-          <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Informações gerais</td></tr>
-          <tr><td>População</td><td>%s</td></tr>
-          <tr><td>Risco natural</td><td>%s</td></tr>
-        </table>
+        <table style='width:100%%;font-size:0.88em;'><tr>
+          <td style='width:50%%;vertical-align:top;padding-right:8px;'>
+            <table style='width:100%%;border-collapse:collapse;'>
+              <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Indices compostos</td></tr>
+              <tr><td>IDS</td><td><b>%s</b></td></tr>
+              <tr><td>IDA</td><td><b>%s</b></td></tr>
+              <tr><td colspan='2' style='padding:3px 0;'></td></tr>
+              <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Saneamento</td></tr>
+              <tr><td>Agua encanada</td><td>%s</td></tr>
+              <tr><td>Esgoto rede geral</td><td>%s</td></tr>
+              <tr><td>Coleta de lixo</td><td>%s</td></tr>
+              <tr><td colspan='2' style='padding:3px 0;'></td></tr>
+              <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Renda e Educacao</td></tr>
+              <tr><td>Renda media</td><td>%s</td></tr>
+              <tr><td>Analfabetismo 15+</td><td>%s</td></tr>
+              <tr><td colspan='2' style='padding:3px 0;'></td></tr>
+              <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Geral</td></tr>
+              <tr><td>Populacao</td><td>%s</td></tr>
+              <tr><td>Risco natural</td><td>%s</td></tr>
+            </table>
+          </td>
+          <td style='width:50%%;vertical-align:top;padding-left:8px;border-left:1px solid #eee;'>
+            <table style='width:100%%;border-collapse:collapse;'>
+              <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Acessibilidade Urbana</td></tr>
+              <tr><td>Via pavimentada</td><td>%s</td></tr>
+              <tr><td>Bueiro</td><td>%s</td></tr>
+              <tr><td>Iluminacao publica</td><td>%s</td></tr>
+              <tr><td>Ponto de onibus</td><td>%s</td></tr>
+              <tr><td>Ciclovia</td><td>%s</td></tr>
+              <tr><td>Calcada</td><td>%s</td></tr>
+              <tr><td>Obstaculo calcada</td><td>%s</td></tr>
+              <tr><td>Rampa cadeirante</td><td>%s</td></tr>
+              %s
+            </table>
+          </td>
+        </tr></table>
       </div>",
       r["nm"],
       fmt_num(suppressWarnings(as.numeric(r["ids"]))),
@@ -371,6 +378,8 @@ make_popup <- function(sf_obj) {
       fmt_pct(suppressWarnings(as.numeric(r["lixo"]))),
       fmt_sm (suppressWarnings(as.numeric(r["renda"]))),
       fmt_pct(suppressWarnings(as.numeric(r["analf"]))),
+      formatC(suppressWarnings(as.integer(r["pop"])), format="d", big.mark="."),
+      ifelse(is.na(r["risco"]), "—", ifelse(r["risco"] == "1", "Sim", "Nao")),
       fmt_pct(suppressWarnings(as.numeric(r["viapav"]))),
       fmt_pct(suppressWarnings(as.numeric(r["bueiro"]))),
       fmt_pct(suppressWarnings(as.numeric(r["ilum"]))),
@@ -379,7 +388,7 @@ make_popup <- function(sf_obj) {
       fmt_pct(suppressWarnings(as.numeric(r["calcad"]))),
       fmt_pct(suppressWarnings(as.numeric(r["obstac"]))),
       fmt_pct(suppressWarnings(as.numeric(r["rampa"]))),
-      aop_block,
+      aop_block
       formatC(suppressWarnings(as.integer(r["pop"])), format="d", big.mark="."),
       ifelse(is.na(r["risco"]), "—", ifelse(r["risco"] == "1", "Sim", "Não"))
     )
