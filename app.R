@@ -329,12 +329,12 @@ make_popup <- function(sf_obj) {
       )
     } else ""
 
-  sprintf(
+sprintf(
      "<div style='font-family:sans-serif;min-width:500px;'>
         <b style='font-size:1.05em;'>%s</b>
         <hr style='margin:4px 0;'>
         <table style='width:100%%;font-size:0.88em;'><tr>
-          <td style='width:50%%;vertical-align:top;padding-right:8px;'>
+          <td style='width:50%%;vertical-align:top;padding-right:20px;'>
             <table style='width:100%%;border-collapse:collapse;'>
               <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Indices compostos</td></tr>
               <tr><td>IDS</td><td><b>%s</b></td></tr>
@@ -354,7 +354,7 @@ make_popup <- function(sf_obj) {
               <tr><td>Risco natural</td><td>%s</td></tr>
             </table>
           </td>
-          <td style='width:50%%;vertical-align:top;padding-left:8px;border-left:1px solid #eee;'>
+          <td style='width:50%%;vertical-align:top;padding-left:20px;padding-right:10px;border-left:1px solid #eee;'>
             <table style='width:100%%;border-collapse:collapse;'>
               <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Acessibilidade Urbana</td></tr>
               <tr><td>Via pavimentada</td><td>%s</td></tr>
