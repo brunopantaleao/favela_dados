@@ -719,10 +719,14 @@ server <- function(input, output, session) {
 
   output$download_csv <- downloadHandler(
     filename = function() {
-      uf_str  <- if (length(input$sel_uf)  > 0 && !all(input$sel_uf  == ""))
-        paste0("_", paste(input$sel_uf,  collapse = "-")) else ""
-      mun_str <- if (length(input$sel_mun) > 0 && !all(input$sel_mun == ""))
-        paste0("_", paste(input$sel_mun, collapse = "-")) else ""
+      u <- input$sel_uf
+      m <- input$sel_mun
+      uf_str  <- if (length(u) > 0 && !all(u == "")) {
+        paste0("_", paste(u, collapse = "-"))
+      } else { "" }
+      mun_str <- if (length(m) > 0 && !all(m == "")) {
+        paste0("_", paste(m, collapse = "-"))
+      } else { "" }
       paste0("favelas_br", uf_str, mun_str, "_", format(Sys.Date(), "%Y%m%d"), ".csv")
     },
     content = function(file) { write_csv2(tabela_export(), file) }
