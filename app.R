@@ -494,7 +494,7 @@ server <- function(input, output, session) {
 if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
       "Mapa — selecione um Estado (UF)"
     } else {
-      paste0("Mapa — IDS | ", nrow(dados_filtrados()), " favelas")
+      paste0("Clique em uma favela pra saber mais sobre ela | ", nrow(dados_filtrados()), " favelas")
     }
   })
 
