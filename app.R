@@ -375,11 +375,10 @@ ui <- page_navbar(
   theme    = bs_theme(bootswatch = "flatly", base_font = font_google("Inter")),
   fillable = TRUE,
 
-  sidebar = sidebar(
+sidebar = sidebar(
     width = 270,
     title = "Filtros",
-
-selectInput("sel_uf", "Estado (UF)", choices = c("Todos" = "", ufs), selected = "", multiple = TRUE),
+    selectInput("sel_uf", "Estado (UF)", choices = c("Todos" = "", ufs), selected = "", multiple = TRUE),
     hr(),
     p(tags$small(tags$i("Dados: Censo IBGE 2022 · IBGE FCU 2022 · SGB · AOP IPEA 2019")))
   ),
@@ -478,24 +477,13 @@ selectInput("sel_uf", "Estado (UF)", choices = c("Todos" = "", ufs), selected = 
 # =========================================================================
 server <- function(input, output, session) {
   
-  updateSelectizeInput(session, "sel_favela_search",
-    choices = fav_search_choices,
-    server  = TRUE
-  )
+ 
 
   # Update municipalities when UF changes
-  observeEvent(input$sel_uf, {
-    muns_filtrados <- if (length(input$sel_uf) > 0 && !all(input$sel_uf == "")) {
-      fav_df %>% filter(nm_uf %in% input$sel_uf) %>% pull(nm_mun) %>% unique() %>% sort()
-    } else { municipios }
-    updateSelectInput(session, "sel_mun",
-      choices  = c("Todos" = "", muns_filtrados),
-      selected = input$sel_mun[input$sel_mun %in% muns_filtrados]
-    )
-  })
+  # (no municipality filter needed - removed from UI)
 
-  dados_filtrados <- reactive({ filter_data(fav_df, input$sel_uf, input$sel_mun) })
-  sf_filtrado     <- reactive({ filter_sf(fav_sf,  input$sel_uf, input$sel_mun) })
+  dados_filtrados <- reactive({ filter_data(fav_df, input$sel_uf, NULL) })
+  sf_filtrado     <- reactive({ filter_sf(fav_sf,  input$sel_uf, NULL) })
   ind_col         <- reactive({ input$sel_ind })
   ind_nome        <- reactive({ ind_label[[input$sel_ind]] })
 
@@ -574,47 +562,7 @@ if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
     }
   }, ignoreInit = TRUE)
 
-  # Auto-zoom on municipality change
-  observeEvent(input$sel_mun, {
-    req(length(input$sel_mun) > 0, !all(input$sel_mun == ""))
-    mun_sel <- input$sel_mun[1]
-    centro  <- mun_centroids %>% filter(nm_mun == mun_sel)
-    if (nrow(centro) > 0) {
-      leafletProxy("mapa") %>%
-        setView(lng = centro$lng[1], lat = centro$lat[1], zoom = 12)
-    }
-  }, ignoreInit = TRUE)
-
-  # Zoom to individual favela when search is used
-  observeEvent(input$sel_favela_search, {
-    req(input$sel_favela_search != "")
-    cd <- input$sel_favela_search
-    row <- fav_df %>% filter(cd_fcu == cd) %>% slice(1)
-    if (nrow(row) == 0) return()
-
-    # Get centroid from fav_sf
-    fav_row <- fav_sf %>% filter(CD_FCU == cd)
-    if (nrow(fav_row) == 0) return()
-
-    ctr <- suppressWarnings(st_centroid(st_geometry(fav_row)))
-    coords <- st_coordinates(ctr)
-    if (nrow(coords) == 0) return()
-
-    lng_f <- coords[1, 1]; lat_f <- coords[1, 2]
-
-    # Load map for this UF if not already loaded
-    uf_of_fav <- row$nm_uf[1]
-    current_uf <- input$sel_uf
-
-    if (is.null(current_uf) || !uf_of_fav %in% current_uf) {
-      # Update UF filter to reveal the map
-      updateSelectInput(session, "sel_uf", selected = uf_of_fav)
-    }
-
-    # Zoom after a brief delay to let the map render
-    session$sendCustomMessage("zoom_to_favela", list(lng = lng_f, lat = lat_f, zoom = 16))
-  }, ignoreInit = TRUE)
-
+ 
   # -----------------------------------------------------------------------
   # Tab: Descritivas
   # -----------------------------------------------------------------------
@@ -623,12 +571,7 @@ if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
           axis.text.x = element_text(size = 9),
           plot.title  = element_blank())
 
-  worst <- isTRUE(input$show_worst)
-    df_c  <- df[!is.na(df[[col]]), ]
-    df_o  <- df_c[order(df_c[[col]], decreasing = !worst), ]
-    df_p  <- df_o[seq_len(min(20, nrow(df_o))), ]
-  
- output$chart_top20 <- renderPlot({
+output$chart_top20 <- renderPlot({
     col   <- ind_col(); nome <- ind_nome(); df <- dados_filtrados()
     if (!col %in% names(df)) return(NULL)
     worst <- isTRUE(input$show_worst)
@@ -636,8 +579,8 @@ if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
     df_o  <- df_c[order(df_c[[col]], decreasing = !worst), ]
     df_p  <- df_o[seq_len(min(20, nrow(df_o))), ]
     df_p$lbl <- fct_reorder(paste0(df_p$nm_fcu, " (", df_p$nm_mun, ")"), df_p[[col]])
-    pal_opt <- if (worst) { "B" } else { "D" }
-    cap_txt <- if (worst) { "20 piores na seleção atual" } else { "Top 20 na seleção atual" }
+    pal_opt  <- if (worst) { "B" } else { "D" }
+    cap_txt  <- if (worst) { "20 piores na selecao atual" } else { "Top 20 na selecao atual" }
     ggplot(df_p, aes(x = .data[[col]], y = lbl, fill = .data[[col]])) +
       geom_col(show.legend = FALSE) +
       geom_text(aes(label = round(.data[[col]], 2)), hjust = -0.15, size = 3) +
