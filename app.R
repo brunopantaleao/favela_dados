@@ -330,7 +330,7 @@ make_popup <- function(sf_obj) {
     } else ""
 
 sprintf(
-     "<div style='font-family:sans-serif;min-width:900px;'>
+     "<div style='font-family:sans-serif;min-width:500px;'>
         <b style='font-size:1.05em;'>%s</b>
         <hr style='margin:4px 0;'>
         <table style='width:100%%;font-size:1em;'><tr>
@@ -702,14 +702,23 @@ output$chart_top20 <- renderPlot({
 
 # Custom JS: receive zoom_to_favela message from server
 ui_with_js <- tagList(
-  tags$head(tags$script(HTML(
-    "Shiny.addCustomMessageHandler('zoom_to_favela', function(msg) {
-      if (window.HTMLWidgets && window.HTMLWidgets.find('#mapa')) {
-        var map = window.HTMLWidgets.find('#mapa').getMap();
-        if (map) { map.setView([msg.lat, msg.lng], msg.zoom); }
+  tags$head(
+    tags$style(HTML("
+      .leaflet-popup-content {
+        width: 850px !important;
+        max-width: 1200px !important;
       }
-    });"
-  ))),
+    ")),
+    
+    tags$script(HTML(
+      "Shiny.addCustomMessageHandler('zoom_to_favela', function(msg) {
+        if (window.HTMLWidgets && window.HTMLWidgets.find('#mapa')) {
+          var map = window.HTMLWidgets.find('#mapa').getMap();
+          if (map) { map.setView([msg.lat, msg.lng], msg.zoom); }
+        }
+      });"
+    ))
+  ),
   ui
 )
 
