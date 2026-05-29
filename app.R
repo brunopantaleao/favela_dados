@@ -511,7 +511,7 @@ server <- function(input, output, session) {
   # Tab: Mapa
   # -----------------------------------------------------------------------
   output$mapa_titulo <- renderText({
-    if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
+if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
       "Mapa — selecione um Estado ou busque uma favela"
     } else {
       paste0("Mapa — ", ind_nome(), " | ", nrow(dados_filtrados()), " favelas")
