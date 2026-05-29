@@ -592,7 +592,8 @@ if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
           plot.title  = element_blank())
 
 output$chart_top20 <- renderPlot({
-    col   <- ind_col_df(); nome <- ind_nome(); df <- dados_filtrados()    if (!col %in% names(df)) return(NULL)
+    col   <- ind_col_df(); nome <- ind_nome(); df <- dados_filtrados()    
+    if (!col %in% names(df)) return(NULL)
     worst <- isTRUE(input$show_worst)
     df_c  <- df[!is.na(df[[col]]), ]
     df_o  <- df_c[order(df_c[[col]], decreasing = !worst), ]
@@ -610,7 +611,8 @@ output$chart_top20 <- renderPlot({
   })
 
   output$chart_hist <- renderPlot({
-  col <- ind_col_df(); nome <- ind_nome(); df <- dados_filtrados()    
+    col <- ind_col_df(); nome <- ind_nome(); df <- dados_filtrados()
+    if (!col %in% names(df)) return(NULL)
     med <- median(df[[col]], na.rm = TRUE)
     ggplot(df, aes(x = .data[[col]])) +
       geom_histogram(bins = 40, fill = "#3B82F6", colour = "white", linewidth = 0.3) +
