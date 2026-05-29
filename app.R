@@ -515,9 +515,9 @@ server <- function(input, output, session) {
   # -----------------------------------------------------------------------
   output$mapa_titulo <- renderText({
 if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
-      "Mapa — selecione um Estado ou busque uma favela"
+      "Mapa — selecione um Estado (UF)"
     } else {
-      paste0("Mapa — ", ind_nome(), " | ", nrow(dados_filtrados()), " favelas")
+      paste0("Mapa — IDS | ", nrow(dados_filtrados()), " favelas")
     }
   })
 
@@ -636,6 +636,11 @@ if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
           axis.text.x = element_text(size = 9),
           plot.title  = element_blank())
 
+  worst <- isTRUE(input$show_worst)
+    df_c  <- df[!is.na(df[[col]]), ]
+    df_o  <- df_c[order(df_c[[col]], decreasing = !worst), ]
+    df_p  <- df_o[seq_len(min(20, nrow(df_o))), ]
+  
   output$chart_top20 <- renderPlot({
     col <- ind_col(); nome <- ind_nome(); df <- dados_filtrados()
     if (!col %in% names(df)) return(NULL)
