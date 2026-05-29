@@ -330,7 +330,7 @@ make_popup <- function(sf_obj) {
     } else ""
 
 sprintf(
-     "<div style='font-family:sans-serif;min-width:500px;'>
+     "<div style='font-family:sans-serif;min-width:1000px;'>
         <b style='font-size:1.05em;'>%s</b>
         <hr style='margin:4px 0;'>
         <table style='width:100%%;font-size:0.88em;'><tr>
