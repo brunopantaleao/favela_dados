@@ -234,6 +234,25 @@ ind_groups  <- sapply(indicadores, `[[`, "group")
 ind_grouped <- split(ind_choices, ind_groups)
 ind_label   <- setNames(sapply(indicadores, `[[`, "label"), sapply(indicadores, `[[`, "col"))
 
+# Map GeoJSON short names -> fav_df long column names
+ind_df_col <- c(
+  IDS        = "IDS",
+  IDA        = "IDA",
+  PERC_AGUA  = "perc_agua_adequada",
+  PERC_ESGO  = "perc_esgoto_adequado",
+  PERC_LIXO  = "perc_lixo_coleta",
+  RENDA_SM   = "renda_sm_pond",
+  PERC_ANALF = "perc_analfabeto_populacao",
+  P_VIAPAV   = "perc_via_pavimentada",
+  P_BUEIRO   = "perc_bueiro",
+  P_ILUM     = "perc_iluminacao_publica",
+  P_ONTON    = "perc_ponto_onibus",
+  P_VIABIC   = "perc_via_bicicleta",
+  P_CALCAD   = "perc_calcada",
+  P_OBSTAC   = "perc_obstaculo_calcada",
+  P_RAMPA    = "perc_rampa_cadeirante",
+  tem_risco  = "tem_risco"
+)
  
 
 # =========================================================================
@@ -486,6 +505,7 @@ server <- function(input, output, session) {
   sf_filtrado     <- reactive({ filter_sf(fav_sf,  input$sel_uf, NULL) })
   ind_col         <- reactive({ input$sel_ind })
   ind_nome        <- reactive({ ind_label[[input$sel_ind]] })
+  ind_col_df      <- reactive({ ind_df_col[[input$sel_ind]] })
 
   # -----------------------------------------------------------------------
   # Tab: Mapa
@@ -572,8 +592,7 @@ if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
           plot.title  = element_blank())
 
 output$chart_top20 <- renderPlot({
-    col   <- ind_col(); nome <- ind_nome(); df <- dados_filtrados()
-    if (!col %in% names(df)) return(NULL)
+    col   <- ind_col_df(); nome <- ind_nome(); df <- dados_filtrados()    if (!col %in% names(df)) return(NULL)
     worst <- isTRUE(input$show_worst)
     df_c  <- df[!is.na(df[[col]]), ]
     df_o  <- df_c[order(df_c[[col]], decreasing = !worst), ]
@@ -591,8 +610,7 @@ output$chart_top20 <- renderPlot({
   })
 
   output$chart_hist <- renderPlot({
-    col <- ind_col(); nome <- ind_nome(); df <- dados_filtrados()
-    if (!col %in% names(df)) return(NULL)
+  col <- ind_col_df(); nome <- ind_nome(); df <- dados_filtrados()    
     med <- median(df[[col]], na.rm = TRUE)
     ggplot(df, aes(x = .data[[col]])) +
       geom_histogram(bins = 40, fill = "#3B82F6", colour = "white", linewidth = 0.3) +
