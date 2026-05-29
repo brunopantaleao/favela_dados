@@ -324,7 +324,7 @@ make_popup <- function(sf_obj) {
       paste0(
         "<tr><td colspan='2' style='padding:4px 0;'></td></tr>",
         "<tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>",
-        "Acesso a Oportunidades <small>(60 min TP)</small></td></tr>",
+        "Oportunidades <small>(60 min de transporte público)</small></td></tr>",
         paste(r_aop[r_aop != ""], collapse = "")
       )
     } else ""
