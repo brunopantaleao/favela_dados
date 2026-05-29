@@ -389,7 +389,6 @@ selectizeInput("sel_favela_search",
     ),
     hr(),
     selectInput("sel_uf",  "Estado (UF)",  choices = c("Todos" = "", ufs),       selected = "", multiple = TRUE),
-    selectInput("sel_mun", "Município",    choices = c("Todos" = "", municipios), selected = "", multiple = TRUE),
     hr(),
     selectInput("sel_ind", "Indicador (cor no mapa)", choices = ind_grouped, selected = "IDS"),
     hr(),
@@ -407,10 +406,15 @@ selectizeInput("sel_favela_search",
 
   # -----------------------------------------------------------------------
   nav_panel(
-    title = tagList(icon("chart-bar"), " Descritivas"),
+    title = tagList(icon("chart-bar"), " Indicadores"),
     layout_columns(col_widths = c(12),
       card(
-        card_header("Top 20 favelas — indicador selecionado"),
+     card_header(
+          layout_columns(col_widths = c(8, 4),
+            selectInput("sel_ind", "Indicador", choices = ind_grouped, selected = "IDS"),
+            checkboxInput("show_worst", "Piores 20", value = FALSE)
+          )
+        ),
         card_body(plotOutput("chart_top20", height = "480px"))
       )
     ),
@@ -539,8 +543,8 @@ if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
     req(search_active || uf_active)
 
     sf_obj <- sf_filtrado()
-    col    <- ind_col()
-    nome   <- ind_nome()
+    col    <- "IDS"
+    nome   <- "IDS"
     vals   <- sf_obj[[col]]
     pal    <- colorNumeric(viridis(100), domain = vals, na.color = "#CCCCCC")
     popups <- unname(make_popup(sf_obj))
