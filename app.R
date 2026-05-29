@@ -180,53 +180,53 @@ capitais <- tibble::tribble(
   ~nm_uf,                  ~lat,     ~lng,  ~zoom,
   "Acre",                 -9.975,  -67.824,   11,
   "Alagoas",              -9.666,  -35.735,   11,
-  "Amapá",                 0.034,  -51.066,   11,
+  "Amap\u00e1",                 0.034,  -51.066,   11,
   "Amazonas",             -3.119,  -60.021,   11,
   "Bahia",               -12.971,  -38.501,   11,
-  "Ceará",                -3.717,  -38.543,   11,
+  "Cear\u00e1",                -3.717,  -38.543,   11,
   "Distrito Federal",    -15.779,  -47.929,   11,
-  "Espírito Santo",      -20.319,  -40.338,   11,
-  "Goiás",               -16.686,  -49.264,   11,
-  "Maranhão",             -2.530,  -44.303,   11,
+  "Esp\u00edrito Santo",      -20.319,  -40.338,   11,
+  "Goi\u00e1s",               -16.686,  -49.264,   11,
+  "Maranh\u00e3o",             -2.530,  -44.303,   11,
   "Mato Grosso",         -15.601,  -56.097,   11,
   "Mato Grosso do Sul",  -20.469,  -54.620,   11,
   "Minas Gerais",        -19.917,  -43.934,   11,
-  "Pará",                 -1.455,  -48.502,   11,
-  "Paraíba",              -7.115,  -34.863,   11,
-  "Paraná",              -25.428,  -49.273,   11,
+  "Par\u00e1",                 -1.455,  -48.502,   11,
+  "Para\u00edba",              -7.115,  -34.863,   11,
+  "Paran\u00e1",              -25.428,  -49.273,   11,
   "Pernambuco",           -8.054,  -34.881,   11,
-  "Piauí",                -5.092,  -42.803,   11,
+  "Piau\u00ed",                -5.092,  -42.803,   11,
   "Rio de Janeiro",      -22.906,  -43.173,   11,
   "Rio Grande do Norte",  -5.795,  -35.209,   11,
   "Rio Grande do Sul",   -30.033,  -51.230,   11,
-  "Rondônia",             -8.761,  -63.902,   11,
+  "Rond\u00f4nia",             -8.761,  -63.902,   11,
   "Roraima",               2.819,  -60.673,   11,
   "Santa Catarina",      -27.595,  -48.548,   11,
-  "São Paulo",           -23.550,  -46.633,   11,
+  "S\u00e3o Paulo",           -23.550,  -46.633,   11,
   "Sergipe",             -10.916,  -37.073,   11,
   "Tocantins",           -10.249,  -48.324,   11
 )
 
 # =========================================================================
-# INDICATOR CATALOGUE  (AOP excluded from dropdown — shown in popup only)
+# INDICATOR CATALOGUE  (AOP excluded from dropdown - shown in popup only)
 # =========================================================================
 indicadores <- list(
-  list(col = "IDS",       label = "IDS — Índice de Desenvolvimento Social",   dir = +1, group = "Índices"),
-  list(col = "IDA",       label = "IDA — Índice de Acessibilidade Urbana",    dir = +1, group = "Índices"),
-  list(col = "PERC_AGUA", label = "Água encanada (%)",                        dir = +1, group = "Saneamento"),
+  list(col = "IDS",       label = "IDS - Indice de Desenvolvimento Social",   dir = +1, group = "Indices"),
+  list(col = "IDA",       label = "IDA - Indice de Acessibilidade Urbana",    dir = +1, group = "Indices"),
+  list(col = "PERC_AGUA", label = "\u00c1gua encanada (%)",                        dir = +1, group = "Saneamento"),
   list(col = "PERC_ESGO", label = "Esgoto rede geral (%)",                    dir = +1, group = "Saneamento"),
   list(col = "PERC_LIXO", label = "Coleta de lixo (%)",                       dir = +1, group = "Saneamento"),
-  list(col = "RENDA_SM",  label = "Renda média (sal. mín.)",                  dir = +1, group = "Renda e Educação"),
-  list(col = "PERC_ANALF",label = "Analfabetismo 15+ (%)",                    dir = -1, group = "Renda e Educação"),
+  list(col = "RENDA_SM",  label = "Renda m\u00e9dia (sal. m\u00edn.)",                  dir = +1, group = "Renda e Educa\u00e7\u00e3o"),
+  list(col = "PERC_ANALF",label = "Analfabetismo 15+ (%)",                    dir = -1, group = "Renda e Educa\u00e7\u00e3o"),
   list(col = "P_VIAPAV",  label = "Via pavimentada (%)",                      dir = +1, group = "Acessibilidade Urbana"),
   list(col = "P_BUEIRO",  label = "Bueiro / boca de lobo (%)",                dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "P_ILUM",    label = "Iluminação pública (%)",                   dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "P_ONTON",   label = "Ponto de ônibus (%)",                      dir = +1, group = "Acessibilidade Urbana"),
+  list(col = "P_ILUM",    label = "Ilumina\u00e7\u00e3o p\u00fablica (%)",                   dir = +1, group = "Acessibilidade Urbana"),
+  list(col = "P_ONTON",   label = "Ponto de \u00f4nibus (%)",                      dir = +1, group = "Acessibilidade Urbana"),
   list(col = "P_VIABIC",  label = "Ciclovia / ciclofaixa (%)",                dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "P_CALCAD",  label = "Calçada (%)",                              dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "P_OBSTAC",  label = "Obstáculo na calçada (%)",                 dir = -1, group = "Acessibilidade Urbana"),
+  list(col = "P_CALCAD",  label = "Cal\u00e7ada (%)",                              dir = +1, group = "Acessibilidade Urbana"),
+  list(col = "P_OBSTAC",  label = "Obst\u00e1culo na cal\u00e7ada (%)",                 dir = -1, group = "Acessibilidade Urbana"),
   list(col = "P_RAMPA",   label = "Rampa para cadeirante (%)",                dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "tem_risco", label = "Exposição a risco natural (flag)",         dir = -1, group = "Riscos Naturais")
+  list(col = "tem_risco", label = "Exposi\u00e7\u00e3o a risco natural (flag)",         dir = -1, group = "Riscos Naturais")
 )
 
 ind_choices <- setNames(sapply(indicadores, `[[`, "col"), sapply(indicadores, `[[`, "label"))
@@ -511,10 +511,11 @@ server <- function(input, output, session) {
   # Tab: Mapa
   # -----------------------------------------------------------------------
   output$mapa_titulo <- renderText({
-    if (length(input$sel_uf) == 0 || all(input$sel_uf == ""))
+    if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
       "Mapa — selecione um Estado ou busque uma favela"
-    else
+    } else {
       paste0("Mapa — ", ind_nome(), " | ", nrow(dados_filtrados()), " favelas")
+    }
   })
 
   output$mapa_ui <- renderUI({
