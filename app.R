@@ -329,9 +329,10 @@ ind_df_col <- c(
 ufs        <- sort(unique(na.omit(fav_df$nm_uf)))
 municipios <- sort(unique(na.omit(fav_df$nm_mun)))
 
+# Search choices: named vector  "nm_fcu - nm_mun" -> cd_fcu, sorted by pop desc
 fav_ord <- fav_df[order(-fav_df$total_pessoas, fav_df$nm_fcu), ]
 fav_search_choices <- setNames(
-  fav_ord$cd_fcu,
+  as.character(fav_ord$cd_fcu),
   paste0(fav_ord$nm_fcu, " - ", fav_ord$nm_mun)
 )
 
@@ -540,31 +541,15 @@ ui <- page_navbar(
   sidebar = sidebar(
     width = 270,
     title = "Filtros",
-    # Favela search — starts empty, queries after 3 chars
+    # Favela search — server-side selectize, activates after 3 chars
     selectizeInput(
       "search_fav", "Buscar favela",
       choices  = NULL,
       selected = NULL,
       options  = list(
-        placeholder     = "Digite o nome da favela...",
-        minLength       = 3,
-        maxOptions      = 20,
-        valueField      = "cd_fcu",
-        labelField      = "label",
-        searchField     = "label",
-        render          = I("{
-          option: function(item, escape) {
-            return '<div>' + escape(item.label) + '</div>';
-          },
-          item: function(item, escape) {
-            return '<div>' + escape(item.label) + '</div>';
-          }
-        }"),
-        load = I("function(query, callback) {
-          if (query.length < 3) return callback();
-          Shiny.setInputValue('fav_search_query', query, {priority: 'event'});
-          // results come back via updateSelectizeInput
-        }")
+        placeholder        = "Digite o nome da favela...",
+        minimumInputLength = 3,
+        maxOptions         = 20
       )
     ),
     hr(),
@@ -675,30 +660,11 @@ server <- function(input, output, session) {
   # Favela search
   # -----------------------------------------------------------------------
 
-  # Respond to keystroke queries — filter choices server-side
-  observeEvent(input$fav_search_query, {
-    q <- tolower(trimws(input$fav_search_query))
-    if (nchar(q) < 3) return()
-
-    matches <- fav_df %>%
-      filter(grepl(q, tolower(paste(nm_fcu, nm_mun)), fixed = TRUE)) %>%
-      arrange(total_pessoas) %>%
-      slice_head(n = 20) %>%
-      transmute(
-        cd_fcu = as.character(cd_fcu),
-        label  = paste0(nm_fcu, " - ", nm_mun)
-      )
-
-    updateSelectizeInput(session, "search_fav",
-                         choices  = matches,
-                         selected = NULL,
-                         server   = FALSE,
-                         options  = list(
-                           valueField  = "cd_fcu",
-                           labelField  = "label",
-                           searchField = "label"
-                         ))
-  }, ignoreNULL = TRUE)
+  # Load all choices server-side on session start (keeps HTML payload small)
+  updateSelectizeInput(session, "search_fav",
+                       choices  = fav_search_choices,
+                       selected = NULL,
+                       server   = TRUE)
 
   # When user picks a favela: load its UF and zoom to it
   observeEvent(input$search_fav, {
