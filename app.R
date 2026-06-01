@@ -31,8 +31,18 @@ message("  Loaded: ", nrow(fav_sf), " FCUs")
 fav_df <- read_csv2(CSV_IDS_URL, show_col_types = FALSE) %>%
   mutate(cd_fcu = as.character(cd_fcu))
 
-riscos <- read_csv2(CSV_RISK_URL, show_col_types = FALSE) %>%
+riscos <- read_csv(CSV_RISK_URL, show_col_types = FALSE) %>%
   mutate(cd_fcu = as.character(cd_fcu))
+
+fav_df <- fav_df %>%
+  left_join(
+    riscos %>% select(cd_fcu, tem_risco, tem_perigo, tem_inundacao,
+                      tem_enxurrada, tem_corrida_massa, classe_risco,
+                      n_setores_risco, n_setores_perigo,
+                      n_setores_inundacao, n_setores_enxurrada,
+                      n_setores_corrida),
+    by = "cd_fcu"
+  )
 
 aop <- tryCatch(
   read_csv2(CSV_AOP_URL, show_col_types = FALSE) %>%
@@ -295,10 +305,14 @@ make_popup <- function(sf_obj) {
   fmt_pct <- function(x) ifelse(is.na(x), "—", paste0(round(x, 1), "%"))
   fmt_num <- function(x) ifelse(is.na(x), "—", round(x, 3))
   fmt_sm  <- function(x) ifelse(is.na(x), "—", paste0(round(x, 2), " SM"))
+  flag    <- function(x) ifelse(is.na(x) | x == 0, "Não", "Sim")
 
-  # Pull AOP from fav_df (not in fav_sf)
-  aop_data <- fav_df %>%
-    select(cd_fcu, CMAET60, CMAST60, CMATT60, CMACT60)
+  aop_data  <- fav_df %>% select(cd_fcu, CMAET60, CMAST60, CMATT60, CMACT60)
+  risk_data <- fav_df %>% select(cd_fcu, tem_risco, tem_perigo, tem_inundacao,
+                                  tem_enxurrada, tem_corrida_massa, classe_risco,
+                                  n_setores_risco, n_setores_perigo,
+                                  n_setores_inundacao, n_setores_enxurrada,
+                                  n_setores_corrida)
 
   df_rows <- data.frame(
     nm     = sf_obj$NM_FCU,
@@ -309,28 +323,71 @@ make_popup <- function(sf_obj) {
     viapav = sf_obj$P_VIAPAV, bueiro = sf_obj$P_BUEIRO, ilum = sf_obj$P_ILUM,
     onton  = sf_obj$P_ONTON,  viabic = sf_obj$P_VIABIC, calcad = sf_obj$P_CALCAD,
     obstac = sf_obj$P_OBSTAC, rampa  = sf_obj$P_RAMPA,
-    risco  = sf_obj$tem_risco, pop   = sf_obj$TOT_PES,
+    pop    = sf_obj$TOT_PES,
     stringsAsFactors = FALSE
-  ) %>% left_join(aop_data, by = "cd_fcu")
+  ) %>%
+    left_join(aop_data,  by = "cd_fcu") %>%
+    left_join(risk_data, by = "cd_fcu")
 
   apply(df_rows, 1, function(r) {
- r_aop <- c(
-      aop_row_html("Escolas públicas acessíveis",  suppressWarnings(as.numeric(r["CMAET60"]))),
-      aop_row_html("Hospitais/UPAs acessíveis",    suppressWarnings(as.numeric(r["CMAST60"]))),
-      aop_row_html("Empregos acessíveis",           suppressWarnings(as.numeric(r["CMATT60"]))),
-      aop_row_html("CRAS acessíveis",               suppressWarnings(as.numeric(r["CMACT60"])))
+    # AOP block (unchanged)
+    r_aop <- c(
+      aop_row_html("Escolas públicas acessíveis", suppressWarnings(as.numeric(r["CMAET60"]))),
+      aop_row_html("Hospitais/UPAs acessíveis",   suppressWarnings(as.numeric(r["CMAST60"]))),
+      aop_row_html("Empregos acessíveis",          suppressWarnings(as.numeric(r["CMATT60"]))),
+      aop_row_html("CRAS acessíveis",              suppressWarnings(as.numeric(r["CMACT60"])))
     )
     aop_block <- if (any(r_aop != "")) {
       paste0(
         "<tr><td colspan='2' style='padding:4px 0;'></td></tr>",
         "<tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>",
-        "Oportunidades <small>(60min/transporte público)</small>",
+        "Oportunidades <small>(60min/transporte público)</small></td></tr>",
         paste(r_aop[r_aop != ""], collapse = "")
       )
     } else ""
 
-sprintf(
-     "<div style='font-family:sans-serif;min-width:500px;'>
+    # Risk block — new
+    classe  <- r["classe_risco"]
+    classe_label <- if (is.na(classe) || classe == "") "—" else classe
+    badge_col <- switch(classe_label,
+      "Alto"       = "#f59e0b",
+      "Muito alto" = "#ef4444",
+      "#6b7280"   # default / "—"
+    )
+    badge <- if (classe_label != "—") {
+      sprintf("<span style='background:%s;color:white;border-radius:3px;padding:1px 5px;font-size:0.82em;'>%s</span>",
+              badge_col, classe_label)
+    } else "—"
+
+    n_risco    <- suppressWarnings(as.integer(r["n_setores_risco"]))
+    n_inund    <- suppressWarnings(as.integer(r["n_setores_inundacao"]))
+    n_enx      <- suppressWarnings(as.integer(r["n_setores_enxurrada"]))
+    n_corrida  <- suppressWarnings(as.integer(r["n_setores_corrida"]))
+    n_perigo   <- suppressWarnings(as.integer(r["n_setores_perigo"]))
+
+    fmt_n <- function(x) ifelse(is.na(x) | x == 0, "—", as.character(x))
+
+    risk_block <- sprintf(
+      "<tr><td colspan='2' style='padding:4px 0;'></td></tr>
+       <tr><td colspan='2' style='background:#fef2f2;padding:2px 4px;font-weight:600;color:#991b1b;'>Riscos Naturais (SGB/CPRM)</td></tr>
+       <tr><td>Exposto a risco</td><td>%s</td></tr>
+       <tr><td>Classe de risco</td><td>%s</td></tr>
+       <tr><td>Setores c/ risco geológico</td><td>%s</td></tr>
+       <tr><td>Setores c/ inundação</td><td>%s</td></tr>
+       <tr><td>Setores c/ enxurrada</td><td>%s</td></tr>
+       <tr><td>Setores c/ corrida de massa</td><td>%s</td></tr>
+       <tr><td>Setores c/ perigo</td><td>%s</td></tr>",
+      flag(suppressWarnings(as.integer(r["tem_risco"]))),
+      badge,
+      fmt_n(n_risco),
+      fmt_n(n_inund),
+      fmt_n(n_enx),
+      fmt_n(n_corrida),
+      fmt_n(n_perigo)
+    )
+
+    sprintf(
+      "<div style='font-family:sans-serif;min-width:500px;'>
         <b style='font-size:1.05em;'>%s</b>
         <hr style='margin:4px 0;'>
         <table style='width:100%%;font-size:1em;'><tr>
@@ -341,17 +398,17 @@ sprintf(
               <tr><td>IDA</td><td><b>%s</b></td></tr>
               <tr><td colspan='2' style='padding:3px 0;'></td></tr>
               <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Saneamento</td></tr>
-              <tr><td>Agua encanada</td><td>%s</td></tr>
+              <tr><td>Água encanada</td><td>%s</td></tr>
               <tr><td>Esgoto rede geral</td><td>%s</td></tr>
               <tr><td>Coleta de lixo</td><td>%s</td></tr>
               <tr><td colspan='2' style='padding:3px 0;'></td></tr>
-              <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Renda e Educacao</td></tr>
-              <tr><td>Renda media</td><td>%s</td></tr>
+              <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Renda e Educação</td></tr>
+              <tr><td>Renda média</td><td>%s</td></tr>
               <tr><td>Analfabetismo 15+</td><td>%s</td></tr>
               <tr><td colspan='2' style='padding:3px 0;'></td></tr>
               <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Geral</td></tr>
-              <tr><td>Populacao</td><td>%s</td></tr>
-              <tr><td>Risco natural</td><td>%s</td></tr>
+              <tr><td>População</td><td>%s</td></tr>
+              %s
             </table>
           </td>
           <td style='width:50%%;vertical-align:top;padding-left:20px;padding-right:10px;border-left:1px solid #eee;'>
@@ -359,11 +416,11 @@ sprintf(
               <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Acessibilidade Urbana</td></tr>
               <tr><td>Via pavimentada</td><td>%s</td></tr>
               <tr><td>Bueiro</td><td>%s</td></tr>
-              <tr><td>Iluminacao publica</td><td>%s</td></tr>
-              <tr><td>Ponto de onibus</td><td>%s</td></tr>
+              <tr><td>Iluminação pública</td><td>%s</td></tr>
+              <tr><td>Ponto de ônibus</td><td>%s</td></tr>
               <tr><td>Ciclovia</td><td>%s</td></tr>
-              <tr><td>Calcada</td><td>%s</td></tr>
-              <tr><td>Obstaculo calcada</td><td>%s</td></tr>
+              <tr><td>Calçada</td><td>%s</td></tr>
+              <tr><td>Obstáculo calçada</td><td>%s</td></tr>
               <tr><td>Rampa cadeirante</td><td>%s</td></tr>
               %s
             </table>
@@ -379,7 +436,7 @@ sprintf(
       fmt_sm (suppressWarnings(as.numeric(r["renda"]))),
       fmt_pct(suppressWarnings(as.numeric(r["analf"]))),
       formatC(suppressWarnings(as.integer(r["pop"])), format="d", big.mark="."),
-      ifelse(is.na(r["risco"]), "—", ifelse(r["risco"] == "1", "Sim", "Não")),
+      risk_block,   # replaces the old single "Risco natural" row
       fmt_pct(suppressWarnings(as.numeric(r["viapav"]))),
       fmt_pct(suppressWarnings(as.numeric(r["bueiro"]))),
       fmt_pct(suppressWarnings(as.numeric(r["ilum"]))),
