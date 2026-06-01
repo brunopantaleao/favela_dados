@@ -31,16 +31,18 @@ message("  Loaded: ", nrow(fav_sf), " FCUs")
 fav_df <- read_csv2(CSV_IDS_URL, show_col_types = FALSE) %>%
   mutate(cd_fcu = as.character(cd_fcu))
 
-riscos <- read_csv(CSV_RISK_URL, show_col_types = FALSE) %>%
-  mutate(cd_fcu = as.character(cd_fcu))
+riscos <- tryCatch(
+  read_csv(CSV_RISK_URL, show_col_types = FALSE),
+  error = function(e) read_csv2(CSV_RISK_URL, show_col_types = FALSE)
+) %>% mutate(cd_fcu = as.character(cd_fcu))
 
 fav_df <- fav_df %>%
   left_join(
-    riscos %>% select(cd_fcu, tem_risco, tem_perigo, tem_inundacao,
-                      tem_enxurrada, tem_corrida_massa, classe_risco,
-                      n_setores_risco, n_setores_perigo,
-                      n_setores_inundacao, n_setores_enxurrada,
-                      n_setores_corrida),
+    riscos %>% select(cd_fcu,
+      tem_risco, tem_perigo, tem_inundacao, tem_enxurrada, tem_corrida_massa,
+      classe_risco,
+      n_setores_risco, n_setores_perigo, n_setores_inundacao,
+      n_setores_enxurrada, n_setores_corrida),
     by = "cd_fcu"
   )
 
