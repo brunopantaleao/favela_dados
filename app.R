@@ -250,7 +250,7 @@ indicadores <- list(
   list(col = "P_CALCAD",  label = "Cal\u00e7ada (%)",                              dir = +1, group = "Acessibilidade Urbana"),
   list(col = "P_OBSTAC",  label = "Obst\u00e1culo na cal\u00e7ada (%)",                 dir = -1, group = "Acessibilidade Urbana"),
   list(col = "P_RAMPA",   label = "Rampa para cadeirante (%)",                dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "tem_risco", label = "Exposi\u00e7\u00e3o a risco natural (flag)",         dir = -1, group = "Riscos Naturais")
+  list(col = "tem_risco", label = "Exposi\u00e7\u00e3o a risco natural (flag)",         dir = -1, group = "Riscos Geológicos (SGB)")
 )
 
 ind_choices <- setNames(sapply(indicadores, `[[`, "col"), sapply(indicadores, `[[`, "label"))
@@ -416,7 +416,7 @@ make_popup <- function(sf_obj) {
               <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Geral</td></tr>
               <tr><td>Popula\u00e7\u00e3o</td><td>%s</td></tr>
               <tr><td colspan='2' style='padding:4px 0;'></td></tr>
-              <tr><td colspan='2' style='background:#fef2f2;padding:2px 4px;font-weight:600;color:#991b1b;'>Riscos Naturais</td></tr>
+              <tr><td colspan='2' style='background:#fef2f2;padding:2px 4px;font-weight:600;color:#991b1b;'>Riscos Geológicos (SGB)</td></tr>
               <tr><td>Exposto a risco</td><td>%s</td></tr>
               <tr><td>Classe de risco</td><td>%s</td></tr>
               <tr><td>Setores c/ risco geol\u00f3gico</td><td>%s</td></tr>
@@ -559,7 +559,7 @@ sidebar = sidebar(
         tags$li(tags$b("IDA — Índice de Acessibilidade Urbana:"), " média de 8 componentes normalizados: via pavimentada, bueiro, iluminação, ponto de ônibus, ciclovia, calçada, obstáculo (invertido) e rampa.")
       ),
 
-      tags$h5("Riscos Naturais — SGB/CPRM"),
+      tags$h5("Riscos Geológicos (SGB) — SGB/CPRM"),
       tags$p("Variável binária: 1 se o polígono FCU intersecta área de risco geológico mapeada pelo Serviço Geológico Brasileiro."),
 
       tags$h5("Acesso a Oportunidades — AOP (aopdata / IPEA, 2019)"),
