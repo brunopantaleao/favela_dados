@@ -355,10 +355,6 @@ make_popup <- function(sf_obj) {
            n_setores_risco, n_setores_perigo, n_setores_inundacao,
            n_setores_enxurrada, n_setores_corrida)
 
-  demo_data <- fav_df %>%
-    select(cd_fcu, pct_pretos_pardos, pct_indigenas,
-           pct_under5, pct_under19, pct_under30, pct_idoso)
-
   df_rows <- tibble(
     nm     = sf_obj$NM_FCU,
     cd_fcu = sf_obj$CD_FCU,
@@ -381,7 +377,11 @@ make_popup <- function(sf_obj) {
   ) %>%
     left_join(aop_data,  by = "cd_fcu") %>%
     left_join(risk_data, by = "cd_fcu") %>%
-    left_join(demo_data, by = "cd_fcu")
+    left_join(
+      fav_df %>% select(cd_fcu, pct_pretos_pardos, pct_indigenas,
+                        pct_under5, pct_under19, pct_under30, pct_idoso),
+      by = "cd_fcu"
+    )
 
   classe_label <- ifelse(is.na(df_rows$classe_risco) | df_rows$classe_risco == "",
                          "—", df_rows$classe_risco)
