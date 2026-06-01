@@ -77,7 +77,7 @@ demo <- tryCatch(
   read_csv(CSV_DEMO_URL, show_col_types = FALSE) %>%
     mutate(cd_fcu = as.character(cd_fcu)) %>%
     select(cd_fcu, pct_pretos_pardos, pct_indigenas,
-           pct_under5, pct_under19, pct_under30),
+           pct_under5, pct_under19, pct_under30, pct_idoso),
   error = function(e) { message("Demographics file not found — skipping."); NULL }
 )
 
@@ -89,6 +89,7 @@ if (!is.null(demo)) {
   fav_df$pct_under5        <- NA_real_
   fav_df$pct_under19       <- NA_real_
   fav_df$pct_under30       <- NA_real_
+  fav_df$pct_idoso         <- NA_real_
 }
 
 message("  fav_df ready: ", nrow(fav_df), " rows | ",
@@ -272,7 +273,8 @@ indicadores <- list(
   list(col = "PCT_INDIGENAS",    label = "Indígenas (%)",                            dir =  0, group = "Demografia"),
   list(col = "PCT_UNDER5",       label = "Crianças menores de 5 anos (%)",           dir =  0, group = "Demografia"),
   list(col = "PCT_UNDER19",      label = "Jovens menores de 19 anos (%)",            dir =  0, group = "Demografia"),
-  list(col = "PCT_UNDER30",      label = "Pessoas menores de 30 anos (%)",           dir =  0, group = "Demografia")
+  list(col = "PCT_UNDER30",      label = "Pessoas menores de 30 anos (%)",           dir =  0, group = "Demografia"),
+  list(col = "PCT_IDOSO",        label = "Idosos 60+ anos (%)",                      dir =  0, group = "Demografia")
 )
 
 ind_choices <- setNames(sapply(indicadores, `[[`, "col"), sapply(indicadores, `[[`, "label"))
@@ -302,7 +304,8 @@ ind_df_col <- c(
   PCT_INDIGENAS     = "pct_indigenas",
   PCT_UNDER5        = "pct_under5",
   PCT_UNDER19       = "pct_under19",
-  PCT_UNDER30       = "pct_under30"
+  PCT_UNDER30       = "pct_under30",
+  PCT_IDOSO         = "pct_idoso"
 )
 
 # =========================================================================
@@ -354,7 +357,7 @@ make_popup <- function(sf_obj) {
 
   demo_data <- fav_df %>%
     select(cd_fcu, pct_pretos_pardos, pct_indigenas,
-           pct_under5, pct_under19, pct_under30)
+           pct_under5, pct_under19, pct_under30, pct_idoso)
 
   df_rows <- tibble(
     nm     = sf_obj$NM_FCU,
@@ -403,7 +406,7 @@ make_popup <- function(sf_obj) {
                   n_setores_risco, n_setores_inundacao, n_setores_enxurrada,
                   n_setores_corrida, n_setores_perigo,
                   pct_pretos_pardos, pct_indigenas,
-                  pct_under5, pct_under19, pct_under30,
+                  pct_under5, pct_under19, pct_under30, pct_idoso,
                   badge) {
 
     aop_rows <- paste0(
@@ -471,6 +474,7 @@ make_popup <- function(sf_obj) {
               <tr><td>Menores de 5 anos</td><td>%s</td></tr>
               <tr><td>Menores de 19 anos</td><td>%s</td></tr>
               <tr><td>Menores de 30 anos</td><td>%s</td></tr>
+              <tr><td>Idosos 60+ anos</td><td>%s</td></tr>
             </table>
           </td>
         </tr></table>
@@ -488,7 +492,7 @@ make_popup <- function(sf_obj) {
       fmt_pct(viabic), fmt_pct(calcad), fmt_pct(obstac), fmt_pct(rampa),
       aop_block,
       fmt_pct(pct_pretos_pardos), fmt_pct(pct_indigenas),
-      fmt_pct(pct_under5), fmt_pct(pct_under19), fmt_pct(pct_under30)
+      fmt_pct(pct_under5), fmt_pct(pct_under19), fmt_pct(pct_under30), fmt_pct(pct_idoso)
     )
   },
   df_rows$nm, df_rows$cd_fcu,
@@ -505,7 +509,7 @@ make_popup <- function(sf_obj) {
   df_rows$n_setores_enxurrada, df_rows$n_setores_corrida,
   df_rows$n_setores_perigo,
   df_rows$pct_pretos_pardos, df_rows$pct_indigenas,
-  df_rows$pct_under5, df_rows$pct_under19, df_rows$pct_under30,
+  df_rows$pct_under5, df_rows$pct_under19, df_rows$pct_under30, df_rows$pct_idoso,
   badge_html,
   SIMPLIFY = TRUE, USE.NAMES = FALSE)
 }
@@ -591,7 +595,8 @@ ui <- page_navbar(
         tags$li(tags$b("Indígenas (%):"), " categoria indígena sobre a população total."),
         tags$li(tags$b("Menores de 5 anos (%):"), " faixa 0–4 anos (exata)."),
         tags$li(tags$b("Menores de 19 anos (%):"), " faixas 0–4 + 5–9 + 10–14 + 15–19 (exata — inclui todo o grupo 15–19)."),
-        tags$li(tags$b("Menores de 30 anos (%):"), " faixas 0–4 até 25–29 (exata).")
+        tags$li(tags$b("Menores de 30 anos (%):"), " faixas 0–4 até 25–29 (exata)."),
+        tags$li(tags$b("Idosos 60+ anos (%):"), " faixas 60–69 + 70+ (exata).")
       ),
 
       tags$h5("Índices Compostos"),
@@ -757,7 +762,7 @@ server <- function(input, output, session) {
              perc_obstaculo_calcada, perc_rampa_cadeirante,
              IDS, IDA,
              any_of(c("pct_pretos_pardos", "pct_indigenas",
-                      "pct_under5", "pct_under19", "pct_under30",
+                      "pct_under5", "pct_under19", "pct_under30", "pct_idoso",
                       "CMAET60", "CMAST60", "CMATT60", "CMACT60", "tem_risco"))) %>%
       rename(
         "Código FCU"             = cd_fcu,
@@ -788,6 +793,7 @@ server <- function(input, output, session) {
         "pct_under5"        ~ "Menores de 5 anos (%)",
         "pct_under19"       ~ "Menores de 19 anos (%)",
         "pct_under30"       ~ "Menores de 30 anos (%)",
+        "pct_idoso"         ~ "Idosos 60+ anos (%)",
         .default = .x
       ))
   })
@@ -802,7 +808,7 @@ server <- function(input, output, session) {
           "Iluminação pública (%)", "Ponto de ônibus (%)", "Ciclovia (%)",
           "Calçada (%)", "Obstáculo calçada (%)", "Rampa cadeirante (%)",
           "Pretos e pardos (%)", "Indígenas (%)",
-          "Menores de 5 anos (%)", "Menores de 19 anos (%)", "Menores de 30 anos (%)"),
+          "Menores de 5 anos (%)", "Menores de 19 anos (%)", "Menores de 30 anos (%)", "Idosos 60+ anos (%)"),
         names(tabela_export())
       ), digits = 1) %>%
       formatCurrency(columns = c("População", "Domicílios ocupados"),
