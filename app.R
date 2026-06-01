@@ -75,21 +75,25 @@ if (!is.null(aop)) {
 # --- Demographics table ---
 demo <- tryCatch(
   read_csv(CSV_DEMO_URL, show_col_types = FALSE) %>%
-    mutate(cd_fcu = as.character(cd_fcu)) %>%
-    select(cd_fcu, pct_pretos_pardos, pct_indigenas,
-           pct_under5, pct_under19, pct_under30, pct_idoso),
+    mutate(cd_fcu = as.character(cd_fcu)),
   error = function(e) { message("Demographics file not found — skipping."); NULL }
 )
 
+demo_cols <- c("pct_pretos_pardos", "pct_indigenas",
+               "pct_under5", "pct_under19", "pct_under30", "pct_idoso")
+
 if (!is.null(demo)) {
-  fav_df <- fav_df %>% left_join(demo, by = "cd_fcu")
+  # Only select columns that actually exist in the file
+  available <- intersect(demo_cols, names(demo))
+  fav_df <- fav_df %>%
+    left_join(demo %>% select(cd_fcu, all_of(available)), by = "cd_fcu")
+  # Fill any expected columns that were absent in the file with NA
+  for (col in setdiff(demo_cols, available)) {
+    fav_df[[col]] <- NA_real_
+    message("  Demographics: column '", col, "' not found in CSV — set to NA")
+  }
 } else {
-  fav_df$pct_pretos_pardos <- NA_real_
-  fav_df$pct_indigenas     <- NA_real_
-  fav_df$pct_under5        <- NA_real_
-  fav_df$pct_under19       <- NA_real_
-  fav_df$pct_under30       <- NA_real_
-  fav_df$pct_idoso         <- NA_real_
+  for (col in demo_cols) fav_df[[col]] <- NA_real_
 }
 
 message("  fav_df ready: ", nrow(fav_df), " rows | ",
