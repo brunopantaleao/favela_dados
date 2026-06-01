@@ -682,7 +682,7 @@ server <- function(input, output, session) {
 
     matches <- fav_df %>%
       filter(grepl(q, tolower(paste(nm_fcu, nm_mun)), fixed = TRUE)) %>%
-      arrange(desc(total_pessoas)) %>%
+      arrange(total_pessoas) %>%
       slice_head(n = 20) %>%
       transmute(
         cd_fcu = as.character(cd_fcu),
