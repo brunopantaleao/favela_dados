@@ -4,6 +4,7 @@ GEOJSON_URL  <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/m
 CSV_IDS_URL  <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_ids_ida.csv"
 CSV_RISK_URL <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_riscos.csv"
 CSV_AOP_URL  <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_acesso_oportunidades.csv"
+CSV_DEMO_URL <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_demograficos_2022.csv"
 
 library(shiny)
 library(bslib)
@@ -31,14 +32,13 @@ message("  Loaded: ", nrow(fav_sf), " FCUs")
 fav_df <- read_csv2(CSV_IDS_URL, show_col_types = FALSE) %>%
   mutate(cd_fcu = as.character(cd_fcu))
 
-# --- Risk table (comma or semicolon) ---
+# --- Risk table ---
 riscos <- tryCatch(
   read_csv(CSV_RISK_URL, show_col_types = FALSE),
   error = function(e) read_csv2(CSV_RISK_URL, show_col_types = FALSE)
 ) %>%
   mutate(cd_fcu = as.character(cd_fcu))
 
-# --- Single join: all risk columns at once ---
 fav_df <- fav_df %>%
   left_join(
     riscos %>% select(
@@ -63,7 +63,6 @@ aop <- tryCatch(
   error = function(e) { message("AOP file not found — skipping."); NULL }
 )
 
-# --- Join AOP, or fill with NA if unavailable ---
 if (!is.null(aop)) {
   fav_df <- fav_df %>% left_join(aop, by = "cd_fcu")
 } else {
@@ -73,13 +72,32 @@ if (!is.null(aop)) {
   fav_df$CMACT60 <- NA_real_
 }
 
+# --- Demographics table ---
+demo <- tryCatch(
+  read_csv(CSV_DEMO_URL, show_col_types = FALSE) %>%
+    mutate(cd_fcu = as.character(cd_fcu)) %>%
+    select(cd_fcu, pct_pretos_pardos, pct_indigenas,
+           pct_under5, pct_under19, pct_under30),
+  error = function(e) { message("Demographics file not found — skipping."); NULL }
+)
+
+if (!is.null(demo)) {
+  fav_df <- fav_df %>% left_join(demo, by = "cd_fcu")
+} else {
+  fav_df$pct_pretos_pardos <- NA_real_
+  fav_df$pct_indigenas     <- NA_real_
+  fav_df$pct_under5        <- NA_real_
+  fav_df$pct_under19       <- NA_real_
+  fav_df$pct_under30       <- NA_real_
+}
+
 message("  fav_df ready: ", nrow(fav_df), " rows | ",
-        sum(!is.na(fav_df$tem_risco)), " FCUs with risk data | ",
-        sum(!is.na(fav_df$CMAET60)),  " FCUs with AOP data")
+        sum(!is.na(fav_df$tem_risco)),        " FCUs with risk data | ",
+        sum(!is.na(fav_df$CMAET60)),          " FCUs with AOP data | ",
+        sum(!is.na(fav_df$pct_pretos_pardos))," FCUs with demographic data")
 
 # =========================================================================
-# MUNICIPALITY CENTROIDS  (from uploaded spreadsheet)
-# Columns: NM_MUN, SIGLA_UF, xcoord (lng), ycoord (lat)
+# MUNICIPALITY CENTROIDS
 # =========================================================================
 mun_centroids_raw <- read.delim(
   textConnection(
@@ -193,64 +211,68 @@ Brasília\tDF\t-47.79685087\t-15.78116622"
   stringsAsFactors = FALSE, sep = "\t"
 )
 
-# Normalise: keep only NM_MUN, lat, lng
 mun_centroids <- mun_centroids_raw %>%
   transmute(nm_mun = NM_MUN, lng = xcoord, lat = ycoord)
 
 # =========================================================================
-# CAPITAL COORDINATES (for UF zoom)
+# CAPITAL COORDINATES
 # =========================================================================
 capitais <- tibble::tribble(
   ~nm_uf,                  ~lat,     ~lng,  ~zoom,
   "Acre",                 -9.975,  -67.824,   11,
   "Alagoas",              -9.666,  -35.735,   11,
-  "Amap\u00e1",                 0.034,  -51.066,   11,
+  "Amapá",                 0.034,  -51.066,   11,
   "Amazonas",             -3.119,  -60.021,   11,
   "Bahia",               -12.971,  -38.501,   11,
-  "Cear\u00e1",                -3.717,  -38.543,   11,
+  "Ceará",                -3.717,  -38.543,   11,
   "Distrito Federal",    -15.779,  -47.929,   11,
-  "Esp\u00edrito Santo",      -20.319,  -40.338,   11,
-  "Goi\u00e1s",               -16.686,  -49.264,   11,
-  "Maranh\u00e3o",             -2.530,  -44.303,   11,
+  "Espírito Santo",      -20.319,  -40.338,   11,
+  "Goiás",               -16.686,  -49.264,   11,
+  "Maranhão",             -2.530,  -44.303,   11,
   "Mato Grosso",         -15.601,  -56.097,   11,
   "Mato Grosso do Sul",  -20.469,  -54.620,   11,
   "Minas Gerais",        -19.917,  -43.934,   11,
-  "Par\u00e1",                 -1.455,  -48.502,   11,
-  "Para\u00edba",              -7.115,  -34.863,   11,
-  "Paran\u00e1",              -25.428,  -49.273,   11,
+  "Pará",                 -1.455,  -48.502,   11,
+  "Paraíba",              -7.115,  -34.863,   11,
+  "Paraná",              -25.428,  -49.273,   11,
   "Pernambuco",           -8.054,  -34.881,   11,
-  "Piau\u00ed",                -5.092,  -42.803,   11,
+  "Piauí",                -5.092,  -42.803,   11,
   "Rio de Janeiro",      -22.906,  -43.173,   11,
   "Rio Grande do Norte",  -5.795,  -35.209,   11,
   "Rio Grande do Sul",   -30.033,  -51.230,   11,
-  "Rond\u00f4nia",             -8.761,  -63.902,   11,
+  "Rondônia",             -8.761,  -63.902,   11,
   "Roraima",               2.819,  -60.673,   11,
   "Santa Catarina",      -27.595,  -48.548,   11,
-  "S\u00e3o Paulo",           -23.550,  -46.633,   11,
+  "São Paulo",           -23.550,  -46.633,   11,
   "Sergipe",             -10.916,  -37.073,   11,
   "Tocantins",           -10.249,  -48.324,   11
 )
 
 # =========================================================================
-# INDICATOR CATALOGUE  (AOP excluded from dropdown - shown in popup only)
+# INDICATOR CATALOGUE
 # =========================================================================
 indicadores <- list(
-  list(col = "IDS",       label = "IDS - Indice de Desenvolvimento Social",   dir = +1, group = "Indices"),
-  list(col = "IDA",       label = "IDA - Indice de Acessibilidade Urbana",    dir = +1, group = "Indices"),
-  list(col = "PERC_AGUA", label = "\u00c1gua encanada (%)",                        dir = +1, group = "Saneamento"),
-  list(col = "PERC_ESGO", label = "Esgoto rede geral (%)",                    dir = +1, group = "Saneamento"),
-  list(col = "PERC_LIXO", label = "Coleta de lixo (%)",                       dir = +1, group = "Saneamento"),
-  list(col = "RENDA_SM",  label = "Renda m\u00e9dia (sal. m\u00edn.)",                  dir = +1, group = "Renda e Educa\u00e7\u00e3o"),
-  list(col = "PERC_ANALF",label = "Analfabetismo 15+ (%)",                    dir = -1, group = "Renda e Educa\u00e7\u00e3o"),
-  list(col = "P_VIAPAV",  label = "Via pavimentada (%)",                      dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "P_BUEIRO",  label = "Bueiro / boca de lobo (%)",                dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "P_ILUM",    label = "Ilumina\u00e7\u00e3o p\u00fablica (%)",                   dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "P_ONTON",   label = "Ponto de \u00f4nibus (%)",                      dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "P_VIABIC",  label = "Ciclovia / ciclofaixa (%)",                dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "P_CALCAD",  label = "Cal\u00e7ada (%)",                              dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "P_OBSTAC",  label = "Obst\u00e1culo na cal\u00e7ada (%)",                 dir = -1, group = "Acessibilidade Urbana"),
-  list(col = "P_RAMPA",   label = "Rampa para cadeirante (%)",                dir = +1, group = "Acessibilidade Urbana"),
-  list(col = "tem_risco", label = "Exposi\u00e7\u00e3o a risco natural (flag)",         dir = -1, group = "Riscos Geológicos (SGB)")
+  list(col = "IDS",              label = "IDS - Índice de Desenvolvimento Social",   dir = +1, group = "Índices"),
+  list(col = "IDA",              label = "IDA - Índice de Acessibilidade Urbana",    dir = +1, group = "Índices"),
+  list(col = "PERC_AGUA",        label = "Água encanada (%)",                        dir = +1, group = "Saneamento"),
+  list(col = "PERC_ESGO",        label = "Esgoto rede geral (%)",                    dir = +1, group = "Saneamento"),
+  list(col = "PERC_LIXO",        label = "Coleta de lixo (%)",                       dir = +1, group = "Saneamento"),
+  list(col = "RENDA_SM",         label = "Renda média (sal. mín.)",                  dir = +1, group = "Renda e Educação"),
+  list(col = "PERC_ANALF",       label = "Analfabetismo 15+ (%)",                    dir = -1, group = "Renda e Educação"),
+  list(col = "P_VIAPAV",         label = "Via pavimentada (%)",                      dir = +1, group = "Acessibilidade Urbana"),
+  list(col = "P_BUEIRO",         label = "Bueiro / boca de lobo (%)",                dir = +1, group = "Acessibilidade Urbana"),
+  list(col = "P_ILUM",           label = "Iluminação pública (%)",                   dir = +1, group = "Acessibilidade Urbana"),
+  list(col = "P_ONTON",          label = "Ponto de ônibus (%)",                      dir = +1, group = "Acessibilidade Urbana"),
+  list(col = "P_VIABIC",         label = "Ciclovia / ciclofaixa (%)",                dir = +1, group = "Acessibilidade Urbana"),
+  list(col = "P_CALCAD",         label = "Calçada (%)",                              dir = +1, group = "Acessibilidade Urbana"),
+  list(col = "P_OBSTAC",         label = "Obstáculo na calçada (%)",                 dir = -1, group = "Acessibilidade Urbana"),
+  list(col = "P_RAMPA",          label = "Rampa para cadeirante (%)",                dir = +1, group = "Acessibilidade Urbana"),
+  list(col = "tem_risco",        label = "Exposição a risco natural (flag)",         dir = -1, group = "Riscos Geológicos (SGB)"),
+  list(col = "PCT_PRETOS_PARDOS",label = "Pretos e pardos (%)",                      dir =  0, group = "Demografia"),
+  list(col = "PCT_INDIGENAS",    label = "Indígenas (%)",                            dir =  0, group = "Demografia"),
+  list(col = "PCT_UNDER5",       label = "Crianças menores de 5 anos (%)",           dir =  0, group = "Demografia"),
+  list(col = "PCT_UNDER19",      label = "Jovens menores de 19 anos (%)",            dir =  0, group = "Demografia"),
+  list(col = "PCT_UNDER30",      label = "Pessoas menores de 30 anos (%)",           dir =  0, group = "Demografia")
 )
 
 ind_choices <- setNames(sapply(indicadores, `[[`, "col"), sapply(indicadores, `[[`, "label"))
@@ -258,26 +280,30 @@ ind_groups  <- sapply(indicadores, `[[`, "group")
 ind_grouped <- split(ind_choices, ind_groups)
 ind_label   <- setNames(sapply(indicadores, `[[`, "label"), sapply(indicadores, `[[`, "col"))
 
-# Map GeoJSON short names -> fav_df long column names
+# Map GeoJSON short names -> fav_df column names
 ind_df_col <- c(
-  IDS        = "IDS",
-  IDA        = "IDA",
-  PERC_AGUA  = "perc_agua_adequada",
-  PERC_ESGO  = "perc_esgoto_adequado",
-  PERC_LIXO  = "perc_lixo_coleta",
-  RENDA_SM   = "renda_sm_pond",
-  PERC_ANALF = "perc_analfabeto_populacao",
-  P_VIAPAV   = "perc_via_pavimentada",
-  P_BUEIRO   = "perc_bueiro",
-  P_ILUM     = "perc_iluminacao_publica",
-  P_ONTON    = "perc_ponto_onibus",
-  P_VIABIC   = "perc_via_bicicleta",
-  P_CALCAD   = "perc_calcada",
-  P_OBSTAC   = "perc_obstaculo_calcada",
-  P_RAMPA    = "perc_rampa_cadeirante",
-  tem_risco  = "tem_risco"
+  IDS               = "IDS",
+  IDA               = "IDA",
+  PERC_AGUA         = "perc_agua_adequada",
+  PERC_ESGO         = "perc_esgoto_adequado",
+  PERC_LIXO         = "perc_lixo_coleta",
+  RENDA_SM          = "renda_sm_pond",
+  PERC_ANALF        = "perc_analfabeto_populacao",
+  P_VIAPAV          = "perc_via_pavimentada",
+  P_BUEIRO          = "perc_bueiro",
+  P_ILUM            = "perc_iluminacao_publica",
+  P_ONTON           = "perc_ponto_onibus",
+  P_VIABIC          = "perc_via_bicicleta",
+  P_CALCAD          = "perc_calcada",
+  P_OBSTAC          = "perc_obstaculo_calcada",
+  P_RAMPA           = "perc_rampa_cadeirante",
+  tem_risco         = "tem_risco",
+  PCT_PRETOS_PARDOS = "pct_pretos_pardos",
+  PCT_INDIGENAS     = "pct_indigenas",
+  PCT_UNDER5        = "pct_under5",
+  PCT_UNDER19       = "pct_under19",
+  PCT_UNDER30       = "pct_under30"
 )
- 
 
 # =========================================================================
 # GEO HIERARCHIES
@@ -285,12 +311,12 @@ ind_df_col <- c(
 ufs        <- sort(unique(na.omit(fav_df$nm_uf)))
 municipios <- sort(unique(na.omit(fav_df$nm_mun)))
 
-# Favela search choices: sorted by population desc
 fav_ord <- fav_df[order(-fav_df$total_pessoas, fav_df$nm_fcu), ]
 fav_search_choices <- setNames(
   fav_ord$cd_fcu,
   paste0(fav_ord$nm_fcu, " - ", fav_ord$nm_mun)
 )
+
 # =========================================================================
 # HELPERS
 # =========================================================================
@@ -310,17 +336,12 @@ filter_sf <- function(sf_obj, uf, mun) {
   sf_obj
 }
 
-aop_row_html <- function(label, val) {
-  if (is.na(val)) return("")
-  sprintf("<tr><td>%s</td><td>%s</td></tr>", label, formatC(round(val), format="d", big.mark="."))
-}
-
 make_popup <- function(sf_obj) {
-  fmt_pct <- function(x) ifelse(is.na(x), "\u2014", paste0(round(x, 1), "%"))
-  fmt_num <- function(x) ifelse(is.na(x), "\u2014", as.character(round(x, 3)))
-  fmt_sm  <- function(x) ifelse(is.na(x), "\u2014", paste0(round(x, 2), " SM"))
-  fmt_n   <- function(x) ifelse(is.na(x) | x == 0,  "\u2014", as.character(x))
-  flag    <- function(x) ifelse(is.na(x) | x == 0,  "N\u00e3o", "Sim")
+  fmt_pct <- function(x) ifelse(is.na(x), "—", paste0(round(x, 1), "%"))
+  fmt_num <- function(x) ifelse(is.na(x), "—", as.character(round(x, 3)))
+  fmt_sm  <- function(x) ifelse(is.na(x), "—", paste0(round(x, 2), " SM"))
+  fmt_n   <- function(x) ifelse(is.na(x) | x == 0,  "—", as.character(x))
+  flag    <- function(x) ifelse(is.na(x) | x == 0,  "Não", "Sim")
 
   aop_data  <- fav_df %>%
     select(cd_fcu, CMAET60, CMAST60, CMATT60, CMACT60)
@@ -330,6 +351,10 @@ make_popup <- function(sf_obj) {
            tem_corrida_massa, classe_risco,
            n_setores_risco, n_setores_perigo, n_setores_inundacao,
            n_setores_enxurrada, n_setores_corrida)
+
+  demo_data <- fav_df %>%
+    select(cd_fcu, pct_pretos_pardos, pct_indigenas,
+           pct_under5, pct_under19, pct_under30)
 
   df_rows <- tibble(
     nm     = sf_obj$NM_FCU,
@@ -352,19 +377,19 @@ make_popup <- function(sf_obj) {
     pop    = sf_obj$TOT_PES
   ) %>%
     left_join(aop_data,  by = "cd_fcu") %>%
-    left_join(risk_data, by = "cd_fcu")
+    left_join(risk_data, by = "cd_fcu") %>%
+    left_join(demo_data, by = "cd_fcu")
 
-  # Vectorised badge — no apply(), no coercion
   classe_label <- ifelse(is.na(df_rows$classe_risco) | df_rows$classe_risco == "",
-                         "\u2014", df_rows$classe_risco)
+                         "—", df_rows$classe_risco)
   badge_col <- dplyr::case_when(
     classe_label == "Alto"       ~ "#f59e0b",
     classe_label == "Muito alto" ~ "#ef4444",
     TRUE                         ~ "#6b7280"
   )
   badge_html <- ifelse(
-    classe_label == "\u2014",
-    "\u2014",
+    classe_label == "—",
+    "—",
     sprintf("<span style='background:%s;color:white;border-radius:3px;padding:1px 5px;font-size:0.82em;'>%s</span>",
             badge_col, classe_label)
   )
@@ -377,19 +402,20 @@ make_popup <- function(sf_obj) {
                   tem_risco, tem_inundacao, tem_enxurrada, tem_corrida_massa, tem_perigo,
                   n_setores_risco, n_setores_inundacao, n_setores_enxurrada,
                   n_setores_corrida, n_setores_perigo,
+                  pct_pretos_pardos, pct_indigenas,
+                  pct_under5, pct_under19, pct_under30,
                   badge) {
 
-    # AOP rows
     aop_rows <- paste0(
-      if (!is.na(CMAET60)) sprintf("<tr><td>Escolas p\u00fablicas acess\u00edveis</td><td>%s</td></tr>", formatC(round(CMAET60), format="d", big.mark=".")) else "",
-      if (!is.na(CMAST60)) sprintf("<tr><td>Hospitais/UPAs acess\u00edveis</td><td>%s</td></tr>",    formatC(round(CMAST60), format="d", big.mark=".")) else "",
-      if (!is.na(CMATT60)) sprintf("<tr><td>Empregos acess\u00edveis</td><td>%s</td></tr>",           formatC(round(CMATT60), format="d", big.mark=".")) else "",
-      if (!is.na(CMACT60)) sprintf("<tr><td>CRAS acess\u00edveis</td><td>%s</td></tr>",               formatC(round(CMACT60), format="d", big.mark=".")) else ""
+      if (!is.na(CMAET60)) sprintf("<tr><td>Escolas públicas acessíveis</td><td>%s</td></tr>", formatC(round(CMAET60), format="d", big.mark=".")) else "",
+      if (!is.na(CMAST60)) sprintf("<tr><td>Hospitais/UPAs acessíveis</td><td>%s</td></tr>",    formatC(round(CMAST60), format="d", big.mark=".")) else "",
+      if (!is.na(CMATT60)) sprintf("<tr><td>Empregos acessíveis</td><td>%s</td></tr>",           formatC(round(CMATT60), format="d", big.mark=".")) else "",
+      if (!is.na(CMACT60)) sprintf("<tr><td>CRAS acessíveis</td><td>%s</td></tr>",               formatC(round(CMACT60), format="d", big.mark=".")) else ""
     )
     aop_block <- if (nchar(aop_rows) > 0) paste0(
       "<tr><td colspan='2' style='padding:4px 0;'></td></tr>",
       "<tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>",
-      "Oportunidades <small>(60min/transporte p\u00fablico)</small></td></tr>",
+      "Oportunidades <small>(60min/transporte público)</small></td></tr>",
       aop_rows
     ) else ""
 
@@ -400,27 +426,27 @@ make_popup <- function(sf_obj) {
         <table style='width:100%%;font-size:1em;'><tr>
           <td style='width:50%%;vertical-align:top;padding-right:20px;'>
             <table style='width:100%%;border-collapse:collapse;'>
-              <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Indices compostos</td></tr>
+              <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Índices compostos</td></tr>
               <tr><td>IDS</td><td><b>%s</b></td></tr>
               <tr><td>IDA</td><td><b>%s</b></td></tr>
               <tr><td colspan='2' style='padding:3px 0;'></td></tr>
               <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Saneamento</td></tr>
-              <tr><td>\u00c1gua encanada</td><td>%s</td></tr>
+              <tr><td>Água encanada</td><td>%s</td></tr>
               <tr><td>Esgoto rede geral</td><td>%s</td></tr>
               <tr><td>Coleta de lixo</td><td>%s</td></tr>
               <tr><td colspan='2' style='padding:3px 0;'></td></tr>
-              <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Renda e Educa\u00e7\u00e3o</td></tr>
-              <tr><td>Renda m\u00e9dia</td><td>%s</td></tr>
+              <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Renda e Educação</td></tr>
+              <tr><td>Renda média</td><td>%s</td></tr>
               <tr><td>Analfabetismo 15+</td><td>%s</td></tr>
               <tr><td colspan='2' style='padding:3px 0;'></td></tr>
               <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Geral</td></tr>
-              <tr><td>Popula\u00e7\u00e3o</td><td>%s</td></tr>
+              <tr><td>População</td><td>%s</td></tr>
               <tr><td colspan='2' style='padding:4px 0;'></td></tr>
               <tr><td colspan='2' style='background:#fef2f2;padding:2px 4px;font-weight:600;color:#991b1b;'>Riscos Geológicos (SGB)</td></tr>
               <tr><td>Exposto a risco</td><td>%s</td></tr>
               <tr><td>Classe de risco</td><td>%s</td></tr>
-              <tr><td>Setores c/ risco geol\u00f3gico</td><td>%s</td></tr>
-              <tr><td>Setores c/ inunda\u00e7\u00e3o</td><td>%s</td></tr>
+              <tr><td>Setores c/ risco geológico</td><td>%s</td></tr>
+              <tr><td>Setores c/ inundação</td><td>%s</td></tr>
               <tr><td>Setores c/ enxurrada</td><td>%s</td></tr>
               <tr><td>Setores c/ corrida de massa</td><td>%s</td></tr>
               <tr><td>Setores c/ perigo</td><td>%s</td></tr>
@@ -431,13 +457,20 @@ make_popup <- function(sf_obj) {
               <tr><td colspan='2' style='background:#f0f0f0;padding:2px 4px;font-weight:600;'>Acessibilidade Urbana</td></tr>
               <tr><td>Via pavimentada</td><td>%s</td></tr>
               <tr><td>Bueiro</td><td>%s</td></tr>
-              <tr><td>Ilumina\u00e7\u00e3o p\u00fablica</td><td>%s</td></tr>
-              <tr><td>Ponto de \u00f4nibus</td><td>%s</td></tr>
+              <tr><td>Iluminação pública</td><td>%s</td></tr>
+              <tr><td>Ponto de ônibus</td><td>%s</td></tr>
               <tr><td>Ciclovia</td><td>%s</td></tr>
-              <tr><td>Cal\u00e7ada</td><td>%s</td></tr>
-              <tr><td>Obst\u00e1culo cal\u00e7ada</td><td>%s</td></tr>
+              <tr><td>Calçada</td><td>%s</td></tr>
+              <tr><td>Obstáculo calçada</td><td>%s</td></tr>
               <tr><td>Rampa cadeirante</td><td>%s</td></tr>
               %s
+              <tr><td colspan='2' style='padding:4px 0;'></td></tr>
+              <tr><td colspan='2' style='background:#eff6ff;padding:2px 4px;font-weight:600;color:#1e40af;'>Demografia (Censo 2022)</td></tr>
+              <tr><td>Pretos e pardos</td><td>%s</td></tr>
+              <tr><td>Indígenas</td><td>%s</td></tr>
+              <tr><td>Menores de 5 anos</td><td>%s</td></tr>
+              <tr><td>Menores de 19 anos</td><td>%s</td></tr>
+              <tr><td>Menores de 30 anos</td><td>%s</td></tr>
             </table>
           </td>
         </tr></table>
@@ -448,14 +481,14 @@ make_popup <- function(sf_obj) {
       fmt_sm(renda), fmt_pct(analf),
       formatC(as.integer(pop), format="d", big.mark="."),
       flag(tem_risco), badge,
-      fmt_n(n_setores_risco),
-      fmt_n(n_setores_inundacao),
-      fmt_n(n_setores_enxurrada),
-      fmt_n(n_setores_corrida),
+      fmt_n(n_setores_risco), fmt_n(n_setores_inundacao),
+      fmt_n(n_setores_enxurrada), fmt_n(n_setores_corrida),
       fmt_n(n_setores_perigo),
       fmt_pct(viapav), fmt_pct(bueiro), fmt_pct(ilum), fmt_pct(onton),
       fmt_pct(viabic), fmt_pct(calcad), fmt_pct(obstac), fmt_pct(rampa),
-      aop_block
+      aop_block,
+      fmt_pct(pct_pretos_pardos), fmt_pct(pct_indigenas),
+      fmt_pct(pct_under5), fmt_pct(pct_under19), fmt_pct(pct_under30)
     )
   },
   df_rows$nm, df_rows$cd_fcu,
@@ -471,9 +504,11 @@ make_popup <- function(sf_obj) {
   df_rows$n_setores_risco, df_rows$n_setores_inundacao,
   df_rows$n_setores_enxurrada, df_rows$n_setores_corrida,
   df_rows$n_setores_perigo,
+  df_rows$pct_pretos_pardos, df_rows$pct_indigenas,
+  df_rows$pct_under5, df_rows$pct_under19, df_rows$pct_under30,
   badge_html,
   SIMPLIFY = TRUE, USE.NAMES = FALSE)
-} 
+}
 
 # =========================================================================
 # UI
@@ -483,7 +518,7 @@ ui <- page_navbar(
   theme    = bs_theme(bootswatch = "flatly", base_font = font_google("Inter")),
   fillable = TRUE,
 
-sidebar = sidebar(
+  sidebar = sidebar(
     width = 270,
     title = "Filtros",
     selectInput("sel_uf", "Estado (UF)", choices = c("Todos" = "", ufs), selected = "", multiple = TRUE),
@@ -491,7 +526,6 @@ sidebar = sidebar(
     p(tags$small(tags$i("Dados: Censo IBGE 2022 · IBGE FCU 2022 · SGB · AOP IPEA 2019")))
   ),
 
-  # -----------------------------------------------------------------------
   nav_panel(
     title = tagList(icon("map"), " Mapa"),
     card(full_screen = TRUE,
@@ -500,12 +534,11 @@ sidebar = sidebar(
     )
   ),
 
-  # -----------------------------------------------------------------------
   nav_panel(
     title = tagList(icon("chart-bar"), " Indicadores"),
     layout_columns(col_widths = c(12),
       card(
-     card_header(
+        card_header(
           layout_columns(col_widths = c(8, 4),
             selectInput("sel_ind", "Indicador", choices = ind_grouped, selected = "IDS"),
             checkboxInput("show_worst", "Piores 20", value = FALSE)
@@ -522,7 +555,6 @@ sidebar = sidebar(
     )
   ),
 
-   # -----------------------------------------------------------------------
   nav_panel(
     title = tagList(icon("table"), " Dados"),
     card(
@@ -534,7 +566,6 @@ sidebar = sidebar(
     )
   ),
 
-  # -----------------------------------------------------------------------
   nav_panel(
     title = tagList(icon("info-circle"), " Metadados"),
     card(card_body(
@@ -553,6 +584,16 @@ sidebar = sidebar(
         tags$li(tags$b("Entorno:"), " % de faces de quadra com via pavimentada, bueiro, iluminação, ponto de ônibus, ciclovia, calçada, obstáculo e rampa para cadeirante.")
       ),
 
+      tags$h5("Demografia (Censo 2022)"),
+      tags$p("Calculado a partir dos Agregados por Setores Censitários do Censo 2022 (resultados do universo), via FTP público do IBGE."),
+      tags$ul(
+        tags$li(tags$b("Pretos e pardos (%):"), " soma das categorias preta e parda sobre a população total do setor."),
+        tags$li(tags$b("Indígenas (%):"), " categoria indígena sobre a população total."),
+        tags$li(tags$b("Menores de 5 anos (%):"), " faixa 0–4 anos (exata)."),
+        tags$li(tags$b("Menores de 19 anos (%):"), " faixas 0–4 + 5–9 + 10–14 + 15–19 (exata — inclui todo o grupo 15–19)."),
+        tags$li(tags$b("Menores de 30 anos (%):"), " faixas 0–4 até 25–29 (exata).")
+      ),
+
       tags$h5("Índices Compostos"),
       tags$ul(
         tags$li(tags$b("IDS — Índice de Desenvolvimento Social:"), " média de 6 componentes min-max normalizados: água, esgoto, lixo, banheiros por morador, alfabetização e renda."),
@@ -563,16 +604,13 @@ sidebar = sidebar(
       tags$p("Variável binária: 1 se o polígono FCU intersecta área de risco geológico mapeada pelo Serviço Geológico Brasileiro."),
 
       tags$h5("Acesso a Oportunidades — AOP (aopdata / IPEA, 2019)"),
-      tags$p("Dados disponíveis para 20 municípios com maior população. Favelas em outros municípios exibem NA nessas variáveis."),
-      tags$p("Municípios cobertos:"),
-      tags$p(tags$em("Belém, Belo Horizonte, Brasília, Campinas, Campo Grande, Curitiba, Duque de Caxias, Fortaleza, Goiânia, Guarulhos, Maceió, Manaus, Natal, Porto Alegre, Recife, Rio de Janeiro, Salvador, São Gonçalo, São Luís, São Paulo.")),
+      tags$p("Dados disponíveis para 20 municípios com maior população."),
       tags$ul(
-      tags$li(tags$b("CMAET60:"), " escolas públicas acessíveis em ≤ 60 min por TP (ET = ensino)."),
-        tags$li(tags$b("CMAST60:"), " hospitais/UPAs acessíveis em ≤ 60 min por TP (ST = saúde)."),
-        tags$li(tags$b("CMATT60:"), " empregos formais acessíveis em ≤ 60 min por TP (TT = trabalho)."),
-        tags$li(tags$b("CMACT60:"), " CRAS acessíveis em ≤ 60 min por TP (CT = assistência social).")
+        tags$li(tags$b("CMAET60:"), " escolas públicas acessíveis em ≤ 60 min por TP."),
+        tags$li(tags$b("CMAST60:"), " hospitais/UPAs acessíveis em ≤ 60 min por TP."),
+        tags$li(tags$b("CMATT60:"), " empregos formais acessíveis em ≤ 60 min por TP."),
+        tags$li(tags$b("CMACT60:"), " CRAS acessíveis em ≤ 60 min por TP.")
       ),
-      tags$p("As variáveis AOP aparecem no popup ao clicar em uma favela, somente quando disponíveis. Elas não estão disponíveis no mapa de cores nem nas Descritivas por cobertura parcial."),
 
       tags$h5("Nota metodológica"),
       tags$p("Indicadores de setor censitário foram agregados ao nível FCU por média ponderada pela população. Normalização min-max calculada sobre setores urbanos de municípios com pelo menos uma favela.")
@@ -584,11 +622,6 @@ sidebar = sidebar(
 # SERVER
 # =========================================================================
 server <- function(input, output, session) {
-  
- 
-
-  # Update municipalities when UF changes
-  # (no municipality filter needed - removed from UI)
 
   dados_filtrados <- reactive({ filter_data(fav_df, input$sel_uf, NULL) })
   sf_filtrado     <- reactive({ filter_sf(fav_sf,  input$sel_uf, NULL) })
@@ -600,7 +633,7 @@ server <- function(input, output, session) {
   # Tab: Mapa
   # -----------------------------------------------------------------------
   output$mapa_titulo <- renderText({
-if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
+    if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
       "Mapa — selecione um Estado (UF)"
     } else {
       paste0("Clique em uma favela pra saber mais sobre ela | ", nrow(dados_filtrados()), " favelas")
@@ -608,8 +641,7 @@ if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
   })
 
   output$mapa_ui <- renderUI({
- uf_active <- length(input$sel_uf) > 0 && !all(input$sel_uf == "")
-
+    uf_active <- length(input$sel_uf) > 0 && !all(input$sel_uf == "")
     if (!uf_active) {
       div(
         style = "height:680px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8f9fa;border-radius:6px;color:#6c757d;",
@@ -628,17 +660,15 @@ if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
 
     sf_obj <- sf_filtrado()
     col    <- "IDS"
-    nome   <- "IDS"
     vals   <- sf_obj[[col]]
     pal    <- colorNumeric(viridis(100), domain = vals, na.color = "#CCCCCC")
     popups <- unname(make_popup(sf_obj))
 
-    # Default view: capital of first selected UF
-    uf_sel   <- if (uf_active) input$sel_uf[1] else NULL
-    cap      <- if (!is.null(uf_sel)) capitais %>% filter(nm_uf == uf_sel) else NULL
-    map_lat  <- if (!is.null(cap) && nrow(cap) > 0) cap$lat[1]  else -15
-    map_lng  <- if (!is.null(cap) && nrow(cap) > 0) cap$lng[1]  else -50
-    map_zoom <- if (!is.null(cap) && nrow(cap) > 0) cap$zoom[1] else  5
+    uf_sel   <- input$sel_uf[1]
+    cap      <- capitais %>% filter(nm_uf == uf_sel)
+    map_lat  <- if (nrow(cap) > 0) cap$lat[1]  else -15
+    map_lng  <- if (nrow(cap) > 0) cap$lng[1]  else -50
+    map_zoom <- if (nrow(cap) > 0) cap$zoom[1] else  5
 
     leaflet(sf_obj) %>%
       setView(lng = map_lng, lat = map_lat, zoom = map_zoom) %>%
@@ -656,11 +686,10 @@ if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
           fillOpacity = 0.95, bringToFront = TRUE
         )
       ) %>%
-      addLegend(pal = pal, values = vals, title = nome,
+      addLegend(pal = pal, values = vals, title = col,
                 opacity = 0.9, position = "bottomright")
   })
 
-  # Auto-zoom on UF change
   observeEvent(input$sel_uf, {
     req(length(input$sel_uf) > 0, !all(input$sel_uf == ""))
     uf_sel <- input$sel_uf[1]
@@ -671,25 +700,24 @@ if (length(input$sel_uf) == 0 || all(input$sel_uf == "")) {
     }
   }, ignoreInit = TRUE)
 
- 
   # -----------------------------------------------------------------------
-  # Tab: Descritivas
+  # Tab: Indicadores
   # -----------------------------------------------------------------------
   chart_theme <- theme_minimal(base_size = 12) +
     theme(panel.grid.major.y = element_blank(),
           axis.text.x = element_text(size = 9),
           plot.title  = element_blank())
 
-output$chart_top20 <- renderPlot({
-    col   <- ind_col_df(); nome <- ind_nome(); df <- dados_filtrados()    
+  output$chart_top20 <- renderPlot({
+    col <- ind_col_df(); nome <- ind_nome(); df <- dados_filtrados()
     if (!col %in% names(df)) return(NULL)
     worst <- isTRUE(input$show_worst)
     df_c  <- df[!is.na(df[[col]]), ]
     df_o  <- df_c[order(df_c[[col]], decreasing = !worst), ]
     df_p  <- df_o[seq_len(min(20, nrow(df_o))), ]
     df_p$lbl <- fct_reorder(paste0(df_p$nm_fcu, " (", df_p$nm_mun, ")"), df_p[[col]])
-    pal_opt  <- if (worst) { "B" } else { "D" }
-    cap_txt  <- if (worst) { "20 piores na selecao atual" } else { "Top 20 na selecao atual" }
+    pal_opt <- if (worst) "B" else "D"
+    cap_txt <- if (worst) "20 piores na seleção atual" else "Top 20 na seleção atual"
     ggplot(df_p, aes(x = .data[[col]], y = lbl, fill = .data[[col]])) +
       geom_col(show.legend = FALSE) +
       geom_text(aes(label = round(.data[[col]], 2)), hjust = -0.15, size = 3) +
@@ -727,7 +755,10 @@ output$chart_top20 <- renderPlot({
              perc_via_pavimentada, perc_bueiro, perc_iluminacao_publica,
              perc_ponto_onibus, perc_via_bicicleta, perc_calcada,
              perc_obstaculo_calcada, perc_rampa_cadeirante,
-             IDS, IDA, any_of(c("CMAET60","CMAST60","CMATT60","CMACT60","tem_risco"))) %>%
+             IDS, IDA,
+             any_of(c("pct_pretos_pardos", "pct_indigenas",
+                      "pct_under5", "pct_under19", "pct_under30",
+                      "CMAET60", "CMAST60", "CMATT60", "CMACT60", "tem_risco"))) %>%
       rename(
         "Código FCU"             = cd_fcu,
         "Nome da favela"         = nm_fcu,
@@ -750,18 +781,30 @@ output$chart_top20 <- renderPlot({
         "Rampa cadeirante (%)"   = perc_rampa_cadeirante,
         "IDS"                    = IDS,
         "IDA"                    = IDA
-      )
+      ) %>%
+      rename_with(~ case_match(.x,
+        "pct_pretos_pardos" ~ "Pretos e pardos (%)",
+        "pct_indigenas"     ~ "Indígenas (%)",
+        "pct_under5"        ~ "Menores de 5 anos (%)",
+        "pct_under19"       ~ "Menores de 19 anos (%)",
+        "pct_under30"       ~ "Menores de 30 anos (%)",
+        .default = .x
+      ))
   })
 
   output$tabela_dados <- renderDT({
     datatable(tabela_export(), rownames = FALSE, filter = "top",
       options = list(pageLength = 25, scrollX = TRUE, dom = "frtip")) %>%
       formatRound(columns = c("IDS", "IDA", "Renda média (SM)"), digits = 3) %>%
-      formatRound(columns = c("Água encanada (%)", "Esgoto rede geral (%)", "Coleta de lixo (%)",
-                              "Analfabetismo 15+ (%)", "Via pavimentada (%)", "Bueiro (%)",
-                              "Iluminação pública (%)", "Ponto de ônibus (%)", "Ciclovia (%)",
-                              "Calçada (%)", "Obstáculo calçada (%)", "Rampa cadeirante (%)"),
-                  digits = 1) %>%
+      formatRound(columns = intersect(
+        c("Água encanada (%)", "Esgoto rede geral (%)", "Coleta de lixo (%)",
+          "Analfabetismo 15+ (%)", "Via pavimentada (%)", "Bueiro (%)",
+          "Iluminação pública (%)", "Ponto de ônibus (%)", "Ciclovia (%)",
+          "Calçada (%)", "Obstáculo calçada (%)", "Rampa cadeirante (%)",
+          "Pretos e pardos (%)", "Indígenas (%)",
+          "Menores de 5 anos (%)", "Menores de 19 anos (%)", "Menores de 30 anos (%)"),
+        names(tabela_export())
+      ), digits = 1) %>%
       formatCurrency(columns = c("População", "Domicílios ocupados"),
                      currency = "", interval = 3, mark = ".", digits = 0)
   })
@@ -769,20 +812,16 @@ output$chart_top20 <- renderPlot({
   output$download_csv <- downloadHandler(
     filename = function() {
       u <- input$sel_uf
-      m <- input$sel_mun
-      uf_str  <- if (length(u) > 0 && !all(u == "")) {
-        paste0("_", paste(u, collapse = "-"))
-      } else { "" }
-      mun_str <- if (length(m) > 0 && !all(m == "")) {
-        paste0("_", paste(m, collapse = "-"))
-      } else { "" }
-      paste0("favelas_br", uf_str, mun_str, "_", format(Sys.Date(), "%Y%m%d"), ".csv")
+      uf_str <- if (length(u) > 0 && !all(u == "")) paste0("_", paste(u, collapse = "-")) else ""
+      paste0("favelas_br", uf_str, "_", format(Sys.Date(), "%Y%m%d"), ".csv")
     },
     content = function(file) { write_csv2(tabela_export(), file) }
   )
 }
 
-# Custom JS: receive zoom_to_favela message from server
+# =========================================================================
+# JS / CSS
+# =========================================================================
 ui_with_js <- tagList(
   tags$head(
     tags$style(HTML("
@@ -791,7 +830,6 @@ ui_with_js <- tagList(
         max-width: 1200px !important;
       }
     ")),
-    
     tags$script(HTML(
       "Shiny.addCustomMessageHandler('zoom_to_favela', function(msg) {
         if (window.HTMLWidgets && window.HTMLWidgets.find('#mapa')) {
