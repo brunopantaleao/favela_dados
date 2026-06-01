@@ -17,7 +17,6 @@ library(forcats)
 library(viridisLite)
 library(scales)
 library(tidyr)
-
 # =========================================================================
 # DATA LOADING
 # =========================================================================
@@ -28,42 +27,55 @@ fav_sf <- st_read(GEOJSON_URL, quiet = TRUE) %>%
   mutate(CD_FCU = as.character(CD_FCU))
 message("  Loaded: ", nrow(fav_sf), " FCUs")
 
+# --- Main table ---
 fav_df <- read_csv2(CSV_IDS_URL, show_col_types = FALSE) %>%
   mutate(cd_fcu = as.character(cd_fcu))
 
+# --- Risk table (comma or semicolon) ---
 riscos <- tryCatch(
   read_csv(CSV_RISK_URL, show_col_types = FALSE),
   error = function(e) read_csv2(CSV_RISK_URL, show_col_types = FALSE)
-) %>% mutate(cd_fcu = as.character(cd_fcu))
+) %>%
+  mutate(cd_fcu = as.character(cd_fcu))
 
+# --- Single join: all risk columns at once ---
 fav_df <- fav_df %>%
   left_join(
-    riscos %>% select(cd_fcu,
+    riscos %>% select(
+      cd_fcu,
       tem_risco, tem_perigo, tem_inundacao, tem_enxurrada, tem_corrida_massa,
       classe_risco,
       n_setores_risco, n_setores_perigo, n_setores_inundacao,
-      n_setores_enxurrada, n_setores_corrida),
+      n_setores_enxurrada, n_setores_corrida
+    ),
     by = "cd_fcu"
   )
 
+# --- AOP table ---
 aop <- tryCatch(
   read_csv2(CSV_AOP_URL, show_col_types = FALSE) %>%
     mutate(cd_fcu = as.character(cd_fcu)) %>%
-    select(cd_fcu, any_of(c("CMAET60","CMAST60","CMATT60","CMACT60",
-                             "CMAET060","CMAST060","CMATT060","CMACT060"))) %>%
+    select(cd_fcu, any_of(c(
+      "CMAET60",  "CMAST60",  "CMATT60",  "CMACT60",
+      "CMAET060", "CMAST060", "CMATT060", "CMACT060"
+    ))) %>%
     rename_with(~ gsub("0$", "", .x), ends_with("060")),
   error = function(e) { message("AOP file not found — skipping."); NULL }
 )
 
-fav_df <- fav_df %>%
-  left_join(riscos %>% select(cd_fcu, tem_risco), by = "cd_fcu")
-
+# --- Join AOP, or fill with NA if unavailable ---
 if (!is.null(aop)) {
   fav_df <- fav_df %>% left_join(aop, by = "cd_fcu")
 } else {
-  fav_df$CMAET60 <- NA_real_; fav_df$CMAST60 <- NA_real_
-  fav_df$CMATT60 <- NA_real_; fav_df$CMACT60 <- NA_real_
+  fav_df$CMAET60 <- NA_real_
+  fav_df$CMAST60 <- NA_real_
+  fav_df$CMATT60 <- NA_real_
+  fav_df$CMACT60 <- NA_real_
 }
+
+message("  fav_df ready: ", nrow(fav_df), " rows | ",
+        sum(!is.na(fav_df$tem_risco)), " FCUs with risk data | ",
+        sum(!is.na(fav_df$CMAET60)),  " FCUs with AOP data")
 
 # =========================================================================
 # MUNICIPALITY CENTROIDS  (from uploaded spreadsheet)
