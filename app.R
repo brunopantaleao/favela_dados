@@ -28,6 +28,17 @@ fav_sf <- st_read(GEOJSON_URL, quiet = TRUE) %>%
   mutate(CD_FCU = as.character(CD_FCU))
 message("  Loaded: ", nrow(fav_sf), " FCUs")
 
+# Pre-compute favela centroids for search zoom
+fav_centroids <- fav_sf %>%
+  st_centroid() %>%
+  mutate(
+    lng = st_coordinates(geometry)[, 1],
+    lat = st_coordinates(geometry)[, 2]
+  ) %>%
+  st_drop_geometry() %>%
+  select(CD_FCU, NM_FCU, NM_MUN, NM_UF, lng, lat) %>%
+  mutate(CD_FCU = as.character(CD_FCU))
+
 # --- Main table ---
 fav_df <- read_csv2(CSV_IDS_URL, show_col_types = FALSE) %>%
   mutate(cd_fcu = as.character(cd_fcu))
@@ -529,6 +540,31 @@ ui <- page_navbar(
   sidebar = sidebar(
     width = 270,
     title = "Filtros",
+    # Favela search — starts empty, queries after 3 chars
+    selectizeInput(
+      "search_fav", "Buscar favela",
+      choices  = NULL,
+      selected = NULL,
+      options  = list(
+        placeholder     = "Digite o nome da favela...",
+        minLength       = 3,
+        maxOptions      = 20,
+        valueField      = "cd_fcu",
+        labelField      = "label",
+        searchField     = "label",
+        render          = I("{
+          option: function(item, escape) {
+            return '<div>' + escape(item.label) + '</div>';
+          }
+        }"),
+        load = I("function(query, callback) {
+          if (query.length < 3) return callback();
+          Shiny.setInputValue('fav_search_query', query, {priority: 'event'});
+          // results come back via updateSelectizeInput
+        }")
+      )
+    ),
+    hr(),
     selectInput("sel_uf", "Estado (UF)", choices = c("Todos" = "", ufs), selected = "", multiple = TRUE),
     hr(),
     p(tags$small(tags$i("Dados: Censo IBGE 2022 · IBGE FCU 2022 · SGB · AOP IPEA 2019")))
@@ -631,6 +667,55 @@ ui <- page_navbar(
 # SERVER
 # =========================================================================
 server <- function(input, output, session) {
+
+  # -----------------------------------------------------------------------
+  # Favela search
+  # -----------------------------------------------------------------------
+
+  # Respond to keystroke queries — filter choices server-side
+  observeEvent(input$fav_search_query, {
+    q <- tolower(trimws(input$fav_search_query))
+    if (nchar(q) < 3) return()
+
+    matches <- fav_df %>%
+      filter(grepl(q, tolower(paste(nm_fcu, nm_mun)), fixed = TRUE)) %>%
+      arrange(nm_fcu) %>%
+      slice_head(n = 20) %>%
+      transmute(
+        cd_fcu = as.character(cd_fcu),
+        label  = paste0(nm_fcu, " — ", nm_mun)
+      )
+
+    updateSelectizeInput(session, "search_fav",
+                         choices  = matches,
+                         selected = NULL,
+                         server   = FALSE,
+                         options  = list(
+                           valueField  = "cd_fcu",
+                           labelField  = "label",
+                           searchField = "label"
+                         ))
+  }, ignoreNULL = TRUE)
+
+  # When user picks a favela: load its UF and zoom to it
+  observeEvent(input$search_fav, {
+    req(input$search_fav, input$search_fav != "")
+
+    fcu <- as.character(input$search_fav)
+    row <- fav_centroids %>% filter(CD_FCU == fcu)
+    if (nrow(row) == 0) return()
+
+    # 1. Set UF filter so the map renders
+    updateSelectInput(session, "sel_uf", selected = row$NM_UF[1])
+
+    # 2. Zoom map to favela after a short delay (map needs to render first)
+    session$sendCustomMessage("zoom_to_favela", list(
+      lat  = row$lat[1],
+      lng  = row$lng[1],
+      zoom = 15,
+      cd_fcu = fcu
+    ))
+  }, ignoreInit = TRUE)
 
   dados_filtrados <- reactive({ filter_data(fav_df, input$sel_uf, NULL) })
   sf_filtrado     <- reactive({ filter_sf(fav_sf,  input$sel_uf, NULL) })
@@ -842,10 +927,26 @@ ui_with_js <- tagList(
     ")),
     tags$script(HTML(
       "Shiny.addCustomMessageHandler('zoom_to_favela', function(msg) {
-        if (window.HTMLWidgets && window.HTMLWidgets.find('#mapa')) {
-          var map = window.HTMLWidgets.find('#mapa').getMap();
-          if (map) { map.setView([msg.lat, msg.lng], msg.zoom); }
-        }
+        // Retry until the map widget is ready (it may still be rendering)
+        var attempts = 0;
+        var tryZoom = function() {
+          var widget = window.HTMLWidgets ? window.HTMLWidgets.find('#mapa') : null;
+          if (widget) {
+            var map = widget.getMap();
+            if (map) {
+              map.setView([msg.lat, msg.lng], msg.zoom);
+              // Open popup for the target layer if it exists
+              map.eachLayer(function(layer) {
+                if (layer.options && layer.options.layerId === msg.cd_fcu) {
+                  layer.openPopup();
+                }
+              });
+              return;
+            }
+          }
+          if (++attempts < 20) setTimeout(tryZoom, 150);
+        };
+        setTimeout(tryZoom, 400);
       });"
     ))
   ),
