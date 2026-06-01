@@ -555,6 +555,9 @@ ui <- page_navbar(
         render          = I("{
           option: function(item, escape) {
             return '<div>' + escape(item.label) + '</div>';
+          },
+          item: function(item, escape) {
+            return '<div>' + escape(item.label) + '</div>';
           }
         }"),
         load = I("function(query, callback) {
@@ -679,11 +682,11 @@ server <- function(input, output, session) {
 
     matches <- fav_df %>%
       filter(grepl(q, tolower(paste(nm_fcu, nm_mun)), fixed = TRUE)) %>%
-      arrange(nm_fcu) %>%
+      arrange(desc(total_pessoas)) %>%
       slice_head(n = 20) %>%
       transmute(
         cd_fcu = as.character(cd_fcu),
-        label  = paste0(nm_fcu, " — ", nm_mun)
+        label  = paste0(nm_fcu, " - ", nm_mun)
       )
 
     updateSelectizeInput(session, "search_fav",
