@@ -397,7 +397,7 @@ make_popup <- function(sf_obj) {
     left_join(risk_data, by = "cd_fcu") %>%
     left_join(
       fav_df %>% select(cd_fcu, pct_pretos_pardos, pct_indigenas,
-                        pct_under5, pct_under19, pct_under30, pct_idoso),
+                        pct_under5, pct_under19, pct_under30, pct_idoso, pct_chefe_mulher),
       by = "cd_fcu"
     )
 
