@@ -18,8 +18,6 @@ library(forcats)
 library(viridisLite)
 library(scales)
 library(tidyr)
-library(shinyjs)          # enable/disable do botão de download (ponto B)
-library(shinycssloaders)  # spinner de carregamento na tabela (ponto B)
 # =========================================================================
 # DATA LOADING
 # =========================================================================
@@ -599,11 +597,15 @@ ui <- page_navbar(
     card(
       card_header(layout_columns(col_widths = c(8, 4),
         textOutput("dados_titulo"),
-        shinyjs::disabled(downloadButton("download_csv", "Baixar CSV", class = "btn-sm btn-success"))
+        # Começa desabilitado; reabilitado via JS quando a tabela desenha (ponto B)
+        tagAppendAttributes(
+          downloadButton("download_csv", "Baixar CSV", class = "btn-sm btn-success"),
+          class = "disabled", `aria-disabled` = "true"
+        )
       )),
       card_body(
         uiOutput("download_note"),
-        shinycssloaders::withSpinner(DTOutput("tabela_dados"), color = "#18BC9C")
+        DTOutput("tabela_dados")
       )
     )
   ),
@@ -932,15 +934,15 @@ server <- function(input, output, session) {
   # Estado de carregamento do botão de download (ponto B):
   # desabilita assim que o filtro muda (tabela vai ser recalculada) e
   # reabilita somente quando o DataTables efetivamente desenha no cliente.
-  # O botão já nasce desabilitado (shinyjs::disabled na UI), então só fica
+  # O botão já nasce desabilitado (classe .disabled na UI), então só fica
   # ativo após o primeiro desenho da tabela.
   # -----------------------------------------------------------------------
   observeEvent(input$sel_uf, {
-    shinyjs::disable("download_csv")
+    session$sendCustomMessage("toggle_download", list(enabled = FALSE))
   }, ignoreInit = TRUE)
 
   observeEvent(input$table_drawn, {
-    shinyjs::enable("download_csv")
+    session$sendCustomMessage("toggle_download", list(enabled = TRUE))
   })
 
   output$download_csv <- downloadHandler(
@@ -957,7 +959,6 @@ server <- function(input, output, session) {
 # JS / CSS
 # =========================================================================
 ui_with_js <- tagList(
-  shinyjs::useShinyjs(),
   tags$head(
     tags$style(HTML("
       .leaflet-popup-content {
@@ -970,6 +971,17 @@ ui_with_js <- tagList(
         margin-left: auto !important;
         margin-right: auto !important;
       }
+      /* Spinner de carregamento sobre a tabela enquanto recalcula (ponto B) */
+      #tabela_dados { position: relative; min-height: 140px; }
+      #tabela_dados.recalculating::after {
+        content: '';
+        position: absolute; top: 60px; left: 50%;
+        width: 46px; height: 46px; margin-left: -23px;
+        border: 5px solid #d1d5db; border-top-color: #18BC9C;
+        border-radius: 50%; animation: favspin 0.8s linear infinite;
+        z-index: 1000;
+      }
+      @keyframes favspin { to { transform: rotate(360deg); } }
     ")),
     tags$script(HTML(
       "Shiny.addCustomMessageHandler('zoom_to_favela', function(msg) {
@@ -993,6 +1005,19 @@ ui_with_js <- tagList(
           if (++attempts < 20) setTimeout(tryZoom, 150);
         };
         setTimeout(tryZoom, 400);
+      });"
+    )),
+    tags$script(HTML(
+      "Shiny.addCustomMessageHandler('toggle_download', function(msg) {
+        var btn = document.getElementById('download_csv');
+        if (!btn) return;
+        if (msg.enabled) {
+          btn.classList.remove('disabled');
+          btn.removeAttribute('aria-disabled');
+        } else {
+          btn.classList.add('disabled');
+          btn.setAttribute('aria-disabled', 'true');
+        }
       });"
     ))
   ),
