@@ -18,6 +18,8 @@ library(forcats)
 library(viridisLite)
 library(scales)
 library(tidyr)
+library(shinyjs)          # enable/disable do botão de download (ponto B)
+library(shinycssloaders)  # spinner de carregamento na tabela (ponto B)
 # =========================================================================
 # DATA LOADING
 # =========================================================================
@@ -552,7 +554,9 @@ ui <- page_navbar(
       options  = list(
         placeholder        = "Digite o nome da favela...",
         minimumInputLength = 3,
-        maxOptions         = 20
+        maxOptions         = 20,
+        # Garante que nenhuma favela venha selecionada ao abrir o app
+        onInitialize       = I('function() { this.setValue(""); }')
       )
     ),
     hr(),
@@ -595,9 +599,12 @@ ui <- page_navbar(
     card(
       card_header(layout_columns(col_widths = c(8, 4),
         textOutput("dados_titulo"),
-        downloadButton("download_csv", "Baixar CSV", class = "btn-sm btn-success")
+        shinyjs::disabled(downloadButton("download_csv", "Baixar CSV", class = "btn-sm btn-success"))
       )),
-      card_body(DTOutput("tabela_dados"))
+      card_body(
+        uiOutput("download_note"),
+        shinycssloaders::withSpinner(DTOutput("tabela_dados"), color = "#18BC9C")
+      )
     )
   ),
 
@@ -799,7 +806,7 @@ server <- function(input, output, session) {
     if (!col %in% names(df)) return(NULL)
     med <- median(df[[col]], na.rm = TRUE)
     ggplot(df, aes(x = .data[[col]])) +
-      geom_histogram(bins = 40, fill = "#3B82F6", colour = "white", linewidth = 0.3) +
+      geom_histogram(bins = 10, fill = "#3B82F6", colour = "white", linewidth = 0.3) +
       geom_vline(xintercept = med, colour = "tomato", linewidth = 1, linetype = "dashed") +
       annotate("text", x = med, y = Inf, vjust = 2, hjust = -0.1,
                label = paste0("Mediana: ", round(med, 2)),
@@ -861,9 +868,51 @@ server <- function(input, output, session) {
       ))
   })
 
+  # Estima quantas favelas e o tamanho aproximado do CSV da seleção atual.
+  # O tamanho é estimado a partir de uma amostra de linhas (barato no reativo).
+  download_info <- reactive({
+    df <- tabela_export()
+    n  <- nrow(df)
+    if (n == 0) return(list(n = 0, bytes = 0))
+    samp_n   <- min(200L, n)
+    samp_txt <- readr::format_csv2(df[seq_len(samp_n), , drop = FALSE])
+    bytes_pr <- nchar(samp_txt, type = "bytes") / samp_n
+    list(n = n, bytes = bytes_pr * n)
+  })
+
+  output$download_note <- renderUI({
+    info <- download_info()
+    fmt_size <- function(b) {
+      if (b <= 0)          "—"
+      else if (b < 1024)   paste0(round(b), " B")
+      else if (b < 1024^2) paste0(round(b / 1024), " KB")
+      else                 paste0(round(b / 1024^2, 1), " MB")
+    }
+    uf <- input$sel_uf
+    escopo <- if (length(uf) > 0 && !all(uf == "")) {
+      paste0("UF selecionada(s): ", paste(uf, collapse = ", "))
+    } else {
+      "todas as favelas do Brasil (nenhum filtro aplicado)"
+    }
+    n_fmt <- formatC(info$n, format = "d", big.mark = ".")
+    div(
+      class = "alert alert-info",
+      style = "padding:8px 12px;margin-bottom:12px;font-size:0.9rem;",
+      tags$i(class = "fa fa-circle-info", style = "margin-right:6px;"),
+      HTML(sprintf(
+        "O bot\u00e3o <b>Baixar CSV</b> exporta exatamente a sele\u00e7\u00e3o atual desta tabela: <b>%s favelas</b> (%s), com todas as colunas exibidas. Tamanho aproximado do arquivo: <b>~%s</b>.",
+        n_fmt, escopo, fmt_size(info$bytes)
+      ))
+    )
+  })
+
   output$tabela_dados <- renderDT({
     datatable(tabela_export(), rownames = FALSE, filter = "top",
-      options = list(pageLength = 25, scrollX = TRUE, dom = "frtip")) %>%
+      options = list(pageLength = 25, scrollX = TRUE, dom = "frtip",
+        # Avisa o servidor quando o DataTables termina de desenhar (ponto B)
+        drawCallback = htmlwidgets::JS(
+          "function(settings) { Shiny.setInputValue('table_drawn', new Date().getTime()); }"
+        ))) %>%
       formatRound(columns = c("IDS", "IDA", "Renda média (SM)"), digits = 3) %>%
       formatRound(columns = intersect(
         c("Água encanada (%)", "Esgoto rede geral (%)", "Coleta de lixo (%)",
@@ -877,6 +926,21 @@ server <- function(input, output, session) {
       ), digits = 1) %>%
       formatCurrency(columns = c("População", "Domicílios ocupados"),
                      currency = "", interval = 3, mark = ".", digits = 0)
+  })
+
+  # -----------------------------------------------------------------------
+  # Estado de carregamento do botão de download (ponto B):
+  # desabilita assim que o filtro muda (tabela vai ser recalculada) e
+  # reabilita somente quando o DataTables efetivamente desenha no cliente.
+  # O botão já nasce desabilitado (shinyjs::disabled na UI), então só fica
+  # ativo após o primeiro desenho da tabela.
+  # -----------------------------------------------------------------------
+  observeEvent(input$sel_uf, {
+    shinyjs::disable("download_csv")
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$table_drawn, {
+    shinyjs::enable("download_csv")
   })
 
   output$download_csv <- downloadHandler(
@@ -893,11 +957,18 @@ server <- function(input, output, session) {
 # JS / CSS
 # =========================================================================
 ui_with_js <- tagList(
+  shinyjs::useShinyjs(),
   tags$head(
     tags$style(HTML("
       .leaflet-popup-content {
         width: 850px !important;
         max-width: 1200px !important;
+      }
+      /* Limita a largura maxima do app e centraliza em telas muito grandes */
+      body {
+        max-width: 1600px;
+        margin-left: auto !important;
+        margin-right: auto !important;
       }
     ")),
     tags$script(HTML(
