@@ -538,7 +538,13 @@ make_popup <- function(sf_obj) {
 # =========================================================================
 ui <- page_navbar(
   title    = "Favela Dados",
-  theme    = bs_theme(bootswatch = "flatly", base_font = font_google("Inter")),
+theme = bs_theme(
+  bootswatch  = "flatly",
+  base_font   = font_google("IBM Plex Sans"),
+  heading_font = font_google("IBM Plex Sans"),
+  primary     = "#611ce3",   # favelas.br violet (lead colour, p.11)
+  success     = "#47d9ba"    # teal accent — e.g. the download button
+)
   fillable = TRUE,
 
   sidebar = sidebar(
