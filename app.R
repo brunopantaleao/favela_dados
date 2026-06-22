@@ -743,7 +743,7 @@ server <- function(input, output, session) {
     sf_obj <- sf_filtrado()
     col    <- "IDS"
     vals   <- sf_obj[[col]]
-    pal    <- colorNumeric(viridis(100), domain = vals, n = 5, na.color = "#CCCCCC")  
+    pal    <- colorQuantile(viridis(100), domain = vals, n = 5, na.color = "#CCCCCC")  
     popups <- unname(make_popup(sf_obj))
 
     uf_sel   <- input$sel_uf[1]
