@@ -764,7 +764,7 @@ server <- function(input, output, session) {
         label       = ~NM_FCU,
         layerId     = ~CD_FCU,
         highlightOptions = highlightOptions(
-          weight = 2, color = "#FFD700",
+          weight = 2, color = "#ebde03",
           fillOpacity = 0.95, bringToFront = TRUE
         )
       ) %>%
