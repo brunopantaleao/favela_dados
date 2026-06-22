@@ -544,7 +544,7 @@ theme = bs_theme(
   heading_font = font_google("IBM Plex Sans"),
   primary     = "#611ce3",   # favelas.br violet (lead colour, p.11)
   success     = "#47d9ba"    # teal accent — e.g. the download button
-)
+),
   fillable = TRUE,
 
   sidebar = sidebar(
