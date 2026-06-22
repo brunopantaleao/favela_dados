@@ -5,7 +5,6 @@ CSV_IDS_URL  <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/m
 CSV_RISK_URL <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_riscos.csv"
 CSV_AOP_URL  <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_acesso_oportunidades.csv"
 CSV_DEMO_URL <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_demograficos_2022.csv"
-brand_ramp <- colorRampPalette(c("#f3effe", "#611ce3"))(100)   # light → violet
 
 library(shiny)
 library(bslib)
@@ -744,7 +743,7 @@ server <- function(input, output, session) {
     sf_obj <- sf_filtrado()
     col    <- "IDS"
     vals   <- sf_obj[[col]]
-    pal    <- colorBin(brand_ramp, domain = vals, bins = 5, na.color = "#e6e6e6")    
+    pal    <- colorNumeric(viridis(100), domain = vals, na.color = "#CCCCCC")  
     popups <- unname(make_popup(sf_obj))
 
     uf_sel   <- input$sel_uf[1]
