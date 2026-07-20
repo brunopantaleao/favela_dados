@@ -598,11 +598,16 @@ theme = bs_theme(
       )),
       card(card_body(
         tags$h5("De onde vêm os dados", style = "color:#611ce3;"),
-        tags$p("Censo IBGE 2022, risco geológico (SGB/CPRM) e acesso a oportunidades (AOP/IPEA), integrados por favela.")
+        tags$p("Censo IBGE 2022, risco geológico (Serviço Geológico Brasileiro) e acesso a oportunidades (Instituto de Pesquisa Econômica Aplicada (IPEA)), integrados por favela. Os dados foram organizados por Bruno Pantaleão e Isabella Montini.")
       )),
       card(card_body(
         tags$h5("Para quem é", style = "color:#611ce3;"),
         tags$p("Pesquisadores, gestores públicos, jornalistas, movimentos sociais e moradores — filtre, visualize e baixe os dados sem precisar programar.")
+      ))
+    ),
+     card(card_body(
+        tags$h5("Como Citar?", style = "color:#611ce3;"),
+        tags$p("'Presenting the Favelas Dados dataset, a bird’s-eye view of Brazilian favelas and urban communities' -https://doi.org/10.31235/osf.io/97yb5_v1")
       ))
     ),
     div(
