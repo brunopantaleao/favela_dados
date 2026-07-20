@@ -5,6 +5,7 @@ CSV_IDS_URL  <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/m
 CSV_RISK_URL <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_riscos.csv"
 CSV_AOP_URL  <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_acesso_oportunidades.csv"
 CSV_DEMO_URL <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas_demograficos_2022.csv"
+LOGO_URL     <- "https://raw.githubusercontent.com/brunopantaleao/favela_dados/main/favelas-logo-2%20(5).png"
 
 library(shiny)
 library(bslib)
@@ -537,40 +538,86 @@ make_popup <- function(sf_obj) {
 # UI
 # =========================================================================
 ui <- page_navbar(
-  title    = "Favela Dados",
+  id       = "main_nav",
+  selected = "Início",
+  title    = tagList(
+    tags$img(src = LOGO_URL, height = "32px", style = "margin-right:8px;vertical-align:middle;"),
+    "Favela Dados"
+  ),
+  bg = "#f76338",   # favelas.br orange — top navbar
 theme = bs_theme(
   bootswatch  = "flatly",
   base_font   = font_google("IBM Plex Sans"),
   heading_font = font_google("IBM Plex Sans"),
   primary     = "#611ce3",   # favelas.br violet (lead colour, p.11)
-  success     = "#47d9ba"    # teal accent — e.g. the download button
+  success     = "#fad142"    # favelas.br yellow accent — e.g. the download button
 ),
   fillable = TRUE,
 
   sidebar = sidebar(
     width = 270,
     title = "Filtros",
-    # Favela search — server-side selectize, activates after 3 chars
-    selectizeInput(
-      "search_fav", "Buscar favela",
-      choices  = NULL,
-      selected = NULL,
-      options  = list(
-        placeholder        = "Digite o nome da favela...",
-        minimumInputLength = 3,
-        maxOptions         = 20,
-        # Garante que nenhuma favela venha selecionada ao abrir o app
-        onInitialize       = I('function() { this.setValue(""); }')
+    conditionalPanel(
+      condition = "input.main_nav != 'Início'",
+      # Favela search — server-side selectize, activates after 3 chars
+      selectizeInput(
+        "search_fav", "Buscar favela",
+        choices  = NULL,
+        selected = NULL,
+        options  = list(
+          placeholder        = "Digite o nome da favela...",
+          minimumInputLength = 3,
+          maxOptions         = 20,
+          # Garante que nenhuma favela venha selecionada ao abrir o app
+          onInitialize       = I('function() { this.setValue(""); }')
+        )
+      ),
+      hr(),
+      selectInput("sel_uf", "Estado (UF)", choices = c("Todos" = "", ufs), selected = "", multiple = TRUE),
+      hr(),
+      p(tags$small(tags$i("Dados: Censo IBGE 2022 · IBGE FCU 2022 · SGB · AOP IPEA 2019")))
+    )
+  ),
+
+  nav_panel(
+    title = "Início",
+    value = "Início",
+    div(
+      style = "text-align:center;background:linear-gradient(135deg, #f76338 0%, #611ce3 100%);color:white;padding:56px 20px;border-radius:8px;margin-bottom:24px;",
+      tags$img(src = LOGO_URL, height = "84px", style = "margin-bottom:16px;"),
+      tags$h2("Favela Dados", style = "font-weight:700;"),
+      tags$p(
+        "Um repositório público de dados quantitativos sobre favelas e comunidades urbanas do Brasil — em um mapa interativo, fácil de usar, sem precisar programar.",
+        style = "font-size:1.1rem;max-width:640px;margin:0 auto;"
       )
     ),
-    hr(),
-    selectInput("sel_uf", "Estado (UF)", choices = c("Todos" = "", ufs), selected = "", multiple = TRUE),
-    hr(),
-    p(tags$small(tags$i("Dados: Censo IBGE 2022 · IBGE FCU 2022 · SGB · AOP IPEA 2019")))
+    layout_columns(col_widths = c(4, 4, 4),
+      card(card_body(
+        tags$h5("O que é", style = "color:#611ce3;"),
+        tags$p("12.348 Favelas e Comunidades Urbanas (FCUs) mapeadas em todo o território nacional, com indicadores de saneamento, renda, acessibilidade e risco.")
+      )),
+      card(card_body(
+        tags$h5("De onde vêm os dados", style = "color:#611ce3;"),
+        tags$p("Censo IBGE 2022, risco geológico (SGB/CPRM) e acesso a oportunidades (AOP/IPEA), integrados por favela.")
+      )),
+      card(card_body(
+        tags$h5("Para quem é", style = "color:#611ce3;"),
+        tags$p("Pesquisadores, gestores públicos, jornalistas, movimentos sociais e moradores — filtre, visualize e baixe os dados sem precisar programar.")
+      ))
+    ),
+    div(
+      style = "text-align:center;margin-top:8px;",
+      actionButton(
+        "go_to_map", "Explorar o mapa →",
+        class = "btn-lg",
+        style = "background:#fad142;color:#3a2a00;border:none;font-weight:600;padding:10px 28px;"
+      )
+    )
   ),
 
   nav_panel(
     title = tagList(icon("map"), " Mapa"),
+    value = "Mapa",
     card(full_screen = TRUE,
       card_header(textOutput("mapa_titulo")),
       uiOutput("mapa_ui")
@@ -674,6 +721,11 @@ theme = bs_theme(
 # SERVER
 # =========================================================================
 server <- function(input, output, session) {
+
+  # Landing-page CTA: jump to the map tab
+  observeEvent(input$go_to_map, {
+    nav_select("main_nav", selected = "Mapa", session = session)
+  })
 
   # -----------------------------------------------------------------------
   # Favela search
@@ -814,11 +866,11 @@ server <- function(input, output, session) {
     if (!col %in% names(df)) return(NULL)
     med <- median(df[[col]], na.rm = TRUE)
     ggplot(df, aes(x = .data[[col]])) +
-      geom_histogram(bins = 10, fill = "#3B82F6", colour = "white", linewidth = 0.3) +
-      geom_vline(xintercept = med, colour = "tomato", linewidth = 1, linetype = "dashed") +
+      geom_histogram(bins = 10, fill = "#611ce3", colour = "white", linewidth = 0.3) +
+      geom_vline(xintercept = med, colour = "#f76338", linewidth = 1, linetype = "dashed") +
       annotate("text", x = med, y = Inf, vjust = 2, hjust = -0.1,
                label = paste0("Mediana: ", round(med, 2)),
-               colour = "tomato", size = 3.5) +
+               colour = "#f76338", size = 3.5) +
       labs(x = nome, y = "Nº de favelas") + theme_minimal(base_size = 12)
   })
 
@@ -977,13 +1029,18 @@ ui_with_js <- tagList(
         margin-left: auto !important;
         margin-right: auto !important;
       }
+      /* Contraste do botao Baixar CSV (agora amarelo, fundo claro) */
+      .btn-success {
+        color: #3a2a00 !important;
+        font-weight: 600;
+      }
       /* Spinner de carregamento sobre a tabela enquanto recalcula (ponto B) */
       #tabela_dados { position: relative; min-height: 140px; }
       #tabela_dados.recalculating::after {
         content: '';
         position: absolute; top: 60px; left: 50%;
         width: 46px; height: 46px; margin-left: -23px;
-        border: 5px solid #d1d5db; border-top-color: #18BC9C;
+        border: 5px solid #d1d5db; border-top-color: #611ce3;
         border-radius: 50%; animation: favspin 0.8s linear infinite;
         z-index: 1000;
       }
