@@ -542,7 +542,6 @@ ui <- page_navbar(
   selected = "Início",
   title    = tagList(
     tags$img(src = LOGO_URL, height = "32px", style = "margin-right:8px;vertical-align:middle;"),
-    "Favela Dados"
   ),
   bg = "#f76338",   # favelas.br orange — top navbar
 theme = bs_theme(
