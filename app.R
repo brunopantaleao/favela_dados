@@ -575,7 +575,7 @@ theme = bs_theme(
       hr(),
       selectInput("sel_uf", "Estado (UF)", choices = c("Todos" = "", ufs), selected = "", multiple = TRUE),
       hr(),
-      p(tags$small(tags$i("Dados: Censo IBGE 2022 · IBGE FCU 2022 · SGB · AOP IPEA 2019")))
+      p(tags$small(tags$i("Dados: Censo IBGE 2022 · IBGE FCU 2022 · Serviço Geológico Brasileiro · IPEA 2019")))
     )
   ),
 
@@ -607,7 +607,7 @@ theme = bs_theme(
     ),
      card(card_body(
         tags$h5("Como Citar?", style = "color:#611ce3;"),
-        tags$p("Presenting the Favelas Dados dataset, a bird’s-eye view of Brazilian favelas and urban communities - https://doi.org/10.31235/osf.io/97yb5_v1")
+        tags$p("'Presenting the Favelas Dados dataset, a bird’s-eye view of Brazilian favelas and urban communities' - https://doi.org/10.31235/osf.io/97yb5_v1"
       ))
     ),
     div(
