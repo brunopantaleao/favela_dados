@@ -450,8 +450,7 @@ i18n <- list(
     card2_p = "IBGE 2022 Population Census, geological hazard mapping (Geological Survey of Brazil) and access to opportunities (Institute for Applied Economic Research — IPEA), integrated at the favela level. Data organized by Bruno Pantaleão and Isabella Montini.",
     card3_t = "Who it is for",
     card3_p = "Researchers, public managers, journalists, social movements and residents — filter, visualize and download the data without coding.",
-    cite_t  = "How to cite: Pantaleão, B. and Montini, I. (2026). Presenting the Favelas Dados dataset, a bird’s-eye view of Brazilian favelas and urban communities. Available at: https://doi.org/10.31235/osf.io/97yb5_v1",
-     go_map  = "Explore the map →",
+    go_map  = "Explore the map →",
     map_title_empty = "Map — select a State (UF)",
     map_title_fmt   = "Click a favela to learn more about it | %s favelas",
     map_empty_h     = "Select a State or search for a favela",
@@ -795,6 +794,7 @@ build_metadata_pt <- function() {
   card(card_body(
     tags$h4("Sobre os dados"),
     tags$hr(),
+    tags$h5("How to cite: Pantaleão, B. and Montini, I. (2026). Presenting the Favelas Dados dataset, a bird’s-eye view of Brazilian favelas and urban communities. Available at: https://doi.org/10.31235/osf.io/97yb5_v1"),
 
     tags$h5("Polígonos de Favelas (FCU)"),
     tags$p("Fonte: IBGE, Censo 2022 — 12.348 Favelas e Comunidades Urbanas (FCUs) em todo o território nacional."),
