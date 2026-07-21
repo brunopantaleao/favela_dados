@@ -112,7 +112,7 @@ The app is deployed to **Posit Connect Cloud** from this GitHub repository.
 
 ## Team & acknowledgements
 
-Favela Dados is a research project coordinated by **PI Rodrigo Bonciani (UNIFESP)**, with associated researchers  **Bruno Pantaleão**(FGV-Analytics) **Pierre Moutier**, **Isabella Montini (UC Berkeley)**, and **Emily Souza** (Favelas BR). The application and dataset were organized by **Bruno Pantaleão** and **Isabella Montini**.
+Favela Dados is a research project coordinated by **PI Rodrigo Bonciani (UNIFESP)**, with associated researchers  **Bruno Pantaleão** (FGV-Analytics) **Pierre Moutier** (Favelas BR), **Isabella Montini (UC Berkeley)**, and **Emily Souza** (Favelas BR). The application and dataset were organized by **Bruno Pantaleão** and **Isabella Montini**.
 
 The project is developed by Favelas BR. https://www.favelas.org.br/
 
