@@ -450,6 +450,8 @@ i18n <- list(
     card2_p = "IBGE 2022 Population Census, geological hazard mapping (Geological Survey of Brazil) and access to opportunities (Institute for Applied Economic Research — IPEA), integrated at the favela level. Data organized by Bruno Pantaleão and Isabella Montini.",
     card3_t = "Who it is for",
     card3_p = "Researchers, public managers, journalists, social movements and residents — filter, visualize and download the data without coding.",
+    card4_t = "Authors",
+    card4_p = "Favela Dados is a research project coordinated by PI Rodrigo Bonciani (UNIFESP), with associated researchers Bruno Pantaleão (FGV-Analytics) Pierre Moutier (Instituto Favelas), Isabella Montini (UC Berkeley), and Emily Souza (Instituto Favelas). The application and dataset were organized by Bruno Pantaleão and Isabella Montini.",
     go_map  = "Explore the map →",
     map_title_empty = "Map — select a State (UF)",
     map_title_fmt   = "Click a favela to learn more about it | %s favelas",
