@@ -4,7 +4,7 @@
 
 Favela Dados is a Shiny/Leaflet web application that maps **12,348 Favelas e Comunidades Urbanas (FCUs)** across the entire Brazilian territory, integrating 2022 Census data, geological hazard mapping, and access-to-opportunities metrics at the favela level. The goal is to turn public and private data into accessible knowledge about Brazilian favelas — usable by researchers, public managers, journalists, social movements, and residents who cannot (and should not need to) program or handle large datasets.
 
-🔗 **Live app:** https://connect.posit.cloud/brunopanta/content/019f8490-1ad8-fdc3-5bb3-359255ee6fb8
+🔗 **Live app:** https://connect.posit.cloud/brunopanta/content/019e6537-c2b3-bf96-e8fc-c77020973ac5
 
 ---
 
