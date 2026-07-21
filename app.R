@@ -411,7 +411,6 @@ i18n <- list(
     card3_p = "Pesquisadores, gestores públicos, jornalistas, movimentos sociais e moradores — filtre, visualize e baixe os dados sem precisar programar.",
     cite_t  = "Autoria:",
     cite_p  = "Favela Dados is a research project coordinated by PI Rodrigo Bonciani (UNIFESP), with associated researchers Bruno Pantaleão (FGV-Analytics) Pierre Moutier (Favelas BR), Isabella Montini (UC Berkeley), and Emily Souza (Favelas BR). The application and dataset were organized by Bruno Pantaleão and Isabella Montini.",
-    cite_p  = "Como Citar? Pantaleão, B. and Montini, I. (2026). Presenting the Favelas Dados dataset, a bird’s-eye view of Brazilian favelas and urban communities. Available at: https://doi.org/10.31235/osf.io/97yb5_v1",
     go_map  = "Explorar o mapa →",
     map_title_empty = "Mapa — selecione um Estado (UF)",
     map_title_fmt   = "Clique em uma favela pra saber mais sobre ela | %s favelas",
