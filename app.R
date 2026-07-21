@@ -949,37 +949,6 @@ build_home_ui <- function() {
 build_desktop_ui <- function(lang) {
   L <- i18n[[lang]]
 
-  tagList(
-
-  # Barra de controles no topo — substitui a antiga barra lateral "Filtros".
-  # Oculta na página inicial; aparece nas abas Mapa / Indicadores / Dados.
-  conditionalPanel(
-    condition = "input.main_nav != 'home'",
-    div(
-      class = "container-fluid",
-      style = "max-width:1100px;margin:12px auto 0;padding:10px 14px;background:#faf9fe;border:1px solid #ece9f7;border-radius:8px;",
-      layout_columns(
-        col_widths = c(6, 6),
-        selectizeInput(
-          "search_fav", L$search_label,
-          choices  = NULL,
-          selected = NULL,
-          width    = "100%",
-          options  = list(
-            placeholder        = L$search_ph,
-            minimumInputLength = 3,
-            maxOptions         = 20,
-            onInitialize       = I('function() { this.setValue(""); }')
-          )
-        ),
-        selectInput("sel_uf", L$uf_label,
-                    choices  = setNames(c("", ufs), c(L$uf_all, ufs)),
-                    selected = "", multiple = TRUE, width = "100%")
-      ),
-      p(tags$small(tags$i(L$sources)), style = "margin:6px 0 0;")
-    )
-  ),
-
   navset_bar(
     id       = "main_nav",
     selected = "home",
@@ -987,6 +956,30 @@ build_desktop_ui <- function(lang) {
       tags$img(src = LOGO_URL, height = "32px", style = "margin-right:8px;vertical-align:middle;")
     ),
     bg = "#f76338",   # favelas.br orange — top navbar
+
+    # Barra de controles à esquerda. Fica escondida por completo em
+    # Início e Metadados (ver observeEvent(input$main_nav) no servidor).
+    sidebar = sidebar(
+      width = 290,
+      # Busca de favela — selectize server-side, ativa após 3 caracteres
+      selectizeInput(
+        "search_fav", L$search_label,
+        choices  = NULL,
+        selected = NULL,
+        options  = list(
+          placeholder        = L$search_ph,
+          minimumInputLength = 3,
+          maxOptions         = 20,
+          onInitialize       = I('function() { this.setValue(""); }')
+        )
+      ),
+      hr(),
+      selectInput("sel_uf", L$uf_label,
+                  choices  = setNames(c("", ufs), c(L$uf_all, ufs)),
+                  selected = "", multiple = TRUE),
+      hr(),
+      p(tags$small(tags$i(L$sources)))
+    ),
 
     nav_panel(
       title = L$nav_home,
@@ -1086,7 +1079,6 @@ build_desktop_ui <- function(lang) {
       actionLink("back_home", L$switch_version,
                  style = "color:white;font-weight:600;text-decoration:none;")
     )
-  )
   )
 }
 
@@ -1273,6 +1265,12 @@ ui <- page_fluid(
       }
       @keyframes favspin { to { transform: rotate(360deg); } }
 
+      /* Esconde a barra lateral de filtros por completo (Início / Metadados),
+         colapsando o grid para uma coluna só — sem deixar 'casca' vazia. */
+      .bslib-sidebar-layout.hide-filter-sidebar { grid-template-columns: 1fr !important; }
+      .bslib-sidebar-layout.hide-filter-sidebar > .sidebar,
+      .bslib-sidebar-layout.hide-filter-sidebar > .collapse-toggle { display: none !important; }
+
       /* --- Página inicial de seleção de versão --- */
       .version-card { transition: transform .12s ease, box-shadow .12s ease; }
       .version-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(97,28,227,0.12); }
@@ -1310,6 +1308,15 @@ ui <- page_fluid(
           if (++attempts < 20) setTimeout(tryZoom, 150);
         };
         setTimeout(tryZoom, 400);
+      });"
+    )),
+    tags$script(HTML(
+      "Shiny.addCustomMessageHandler('toggle_filter_sidebar', function(msg) {
+        var layouts = document.querySelectorAll('.bslib-sidebar-layout');
+        layouts.forEach(function(l) {
+          if (msg.show) { l.classList.remove('hide-filter-sidebar'); }
+          else          { l.classList.add('hide-filter-sidebar'); }
+        });
       });"
     )),
     tags$script(HTML(
@@ -1356,6 +1363,14 @@ server <- function(input, output, session) {
   })
 
   is_desktop <- reactive({ mode() %in% c("desktop_pt", "desktop_en") })
+
+  # Mostra a barra lateral de filtros apenas em Mapa / Indicadores / Dados.
+  # Em Início e Metadados ela some por completo (não fica casca vazia).
+  observeEvent(input$main_nav, {
+    req(is_desktop())
+    show <- !(input$main_nav %in% c("home", "meta"))
+    session$sendCustomMessage("toggle_filter_sidebar", list(show = show))
+  })
 
   # Load search choices server-side whenever an app version is entered
   observeEvent(mode(), {
