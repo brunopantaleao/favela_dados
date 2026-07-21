@@ -949,6 +949,37 @@ build_home_ui <- function() {
 build_desktop_ui <- function(lang) {
   L <- i18n[[lang]]
 
+  tagList(
+
+  # Barra de controles no topo — substitui a antiga barra lateral "Filtros".
+  # Oculta na página inicial; aparece nas abas Mapa / Indicadores / Dados.
+  conditionalPanel(
+    condition = "input.main_nav != 'home'",
+    div(
+      class = "container-fluid",
+      style = "max-width:1100px;margin:12px auto 0;padding:10px 14px;background:#faf9fe;border:1px solid #ece9f7;border-radius:8px;",
+      layout_columns(
+        col_widths = c(6, 6),
+        selectizeInput(
+          "search_fav", L$search_label,
+          choices  = NULL,
+          selected = NULL,
+          width    = "100%",
+          options  = list(
+            placeholder        = L$search_ph,
+            minimumInputLength = 3,
+            maxOptions         = 20,
+            onInitialize       = I('function() { this.setValue(""); }')
+          )
+        ),
+        selectInput("sel_uf", L$uf_label,
+                    choices  = setNames(c("", ufs), c(L$uf_all, ufs)),
+                    selected = "", multiple = TRUE, width = "100%")
+      ),
+      p(tags$small(tags$i(L$sources)), style = "margin:6px 0 0;")
+    )
+  ),
+
   navset_bar(
     id       = "main_nav",
     selected = "home",
@@ -956,32 +987,6 @@ build_desktop_ui <- function(lang) {
       tags$img(src = LOGO_URL, height = "32px", style = "margin-right:8px;vertical-align:middle;")
     ),
     bg = "#f76338",   # favelas.br orange — top navbar
-
-    sidebar = sidebar(
-      width = 270,
-      title = L$filters,
-      conditionalPanel(
-        condition = "input.main_nav != 'home'",
-        # Favela search — server-side selectize, activates after 3 chars
-        selectizeInput(
-          "search_fav", L$search_label,
-          choices  = NULL,
-          selected = NULL,
-          options  = list(
-            placeholder        = L$search_ph,
-            minimumInputLength = 3,
-            maxOptions         = 20,
-            # Garante que nenhuma favela venha selecionada ao abrir o app
-            onInitialize       = I('function() { this.setValue(""); }')
-          )
-        ),
-        hr(),
-        selectInput("sel_uf", L$uf_label, choices = setNames(c("", ufs), c(L$uf_all, ufs)),
-                    selected = "", multiple = TRUE),
-        hr(),
-        p(tags$small(tags$i(L$sources)))
-      )
-    ),
 
     nav_panel(
       title = L$nav_home,
@@ -1081,6 +1086,7 @@ build_desktop_ui <- function(lang) {
       actionLink("back_home", L$switch_version,
                  style = "color:white;font-weight:600;text-decoration:none;")
     )
+  )
   )
 }
 
