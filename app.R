@@ -402,7 +402,7 @@ i18n <- list(
     nav_meta       = " Metadados",
     switch_version = "⇄ Trocar versão",
     hero_title     = "Favela Dados",
-    hero_sub       = "Um repositório público de dados quantitativos sobre favelas e comunidades urbanas do Brasil — em um mapa interativo, fácil de usar, sem precisar programar.",
+    hero_sub       = "Um repositório público de dados quantitativos sobre favelas e comunidades urbanas do Brasil. Acesso aos dados sem precisar programar.",
     card1_t = "O que é",
     card1_p = "12.348 Favelas e Comunidades Urbanas (FCUs) mapeadas em todo o território nacional, com indicadores de saneamento, renda, acessibilidade e risco.",
     card2_t = "De onde vêm os dados",
