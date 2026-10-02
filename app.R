@@ -1468,7 +1468,7 @@ server <- function(input, output, session) {
 
     leaflet(sf_obj) %>%
       setView(lng = map_lng, lat = map_lat, zoom = map_zoom) %>%
-      addProviderTiles("CartoDB.Positron") %>%
+      addProviderTiles("OpenStreetMap") %>%
       addPolygons(
         fillColor   = ~pal(vals),
         fillOpacity = 0.8,
